@@ -1,7 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2012 for Windows Desktop
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Networking", "Utils\Networking\Networking.csproj", "{B47D4919-21AA-409D-83C9-F1A6B5664A6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinectTest", "Tests\KinectTest\KinectTest.csproj", "{94EEE216-4D9F-429F-B0A2-E850D4909D13}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B47D4919-21AA-409D-83C9-F1A6B5664A6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B47D4919-21AA-409D-83C9-F1A6B5664A6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B47D4919-21AA-409D-83C9-F1A6B5664A6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B47D4919-21AA-409D-83C9-F1A6B5664A6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{94EEE216-4D9F-429F-B0A2-E850D4909D13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{94EEE216-4D9F-429F-B0A2-E850D4909D13}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{94EEE216-4D9F-429F-B0A2-E850D4909D13}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{94EEE216-4D9F-429F-B0A2-E850D4909D13}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
