@@ -1,0 +1,15 @@
+Kinect App
+ Skelettpunkter per frame
+  Transformeras till global coord
+   Skickas till globalcommand
+
+GlobalCommmand
+ Sammanställer skelettpunkter
+  Identifierar ljuskäglor
+   Transformerar till projektorspace
+    Skickar ljuskäglor till Projektor
+
+Projektor
+ Tar emot ljuskäglorinfo
+  Renderar ut bild
+   
