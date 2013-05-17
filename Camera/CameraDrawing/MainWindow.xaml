@@ -1,0 +1,10 @@
+﻿<Window x:Class="CameraDrawing.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MainWindow" Height="480" Width="1280" Loaded="Window_Loaded" KeyUp="Window_KeyUp">
+    <Grid>
+        <Image Width="640" Height="480" Name="ImageLeft" HorizontalAlignment="Left"></Image>
+        <Image Width="640" Height="480" Name="DrawLeft" HorizontalAlignment="Left"></Image>
+        <Image Width="640" Height="480" Name="ImageRight" HorizontalAlignment="Right"></Image>
+    </Grid>
+</Window>

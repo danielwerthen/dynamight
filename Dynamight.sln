@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Overview", "GlobalCommand\O
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinectApp", "Kinect\KinectApp\KinectApp.csproj", "{CF2E13A9-4B64-4A2B-8E51-D6967BE44B50}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CameraDrawing", "Camera\CameraDrawing\CameraDrawing.csproj", "{002C04C2-D867-4270-8136-88EEBE159E86}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,6 +33,10 @@ Global
 		{CF2E13A9-4B64-4A2B-8E51-D6967BE44B50}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CF2E13A9-4B64-4A2B-8E51-D6967BE44B50}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CF2E13A9-4B64-4A2B-8E51-D6967BE44B50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{002C04C2-D867-4270-8136-88EEBE159E86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{002C04C2-D867-4270-8136-88EEBE159E86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{002C04C2-D867-4270-8136-88EEBE159E86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{002C04C2-D867-4270-8136-88EEBE159E86}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

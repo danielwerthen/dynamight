@@ -33,6 +33,8 @@ namespace Dynamight.Kinect.KinectApp
             };
             sensor.Start();
             sensor.ElevationAngle = 0;
+            sensor.SkeletonStream.TrackingMode = SkeletonTrackingMode.Default;
+            
 
             Vector<double> p0 = null, p1 = null, p2 = null;
             Func<Vector<double>, Vector<double>> transform = null;
