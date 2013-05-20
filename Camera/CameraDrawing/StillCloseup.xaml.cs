@@ -49,7 +49,7 @@ namespace CameraDrawing
             {
                 SaveFileDialog sfd = new SaveFileDialog();
                 sfd.AddExtension = true;
-                sfd.FileName = DateTime.Today.ToShortTimeString();
+                sfd.FileName = DateTime.Now.ToString("ddMMyyhhmm");
                 sfd.DefaultExt = "png";
                 sfd.Filter = "Image files (*.png)|*.png";
                 if (sfd.ShowDialog() == true)
@@ -57,8 +57,10 @@ namespace CameraDrawing
                     for (short i = 1000; i <= 18000; i += 500)
                     {
                         var clone = bitmap.Clone();
-                        drawer(clone, (short)(i - 1000), i);
-                        using (FileStream stream5 = new FileStream(System.IO.Path.GetDirectoryName(sfd.FileName) + "\\" + System.IO.Path.GetFileName(sfd.FileName) + i.ToString("00") + System.IO.Path.GetExtension(sfd.FileName), FileMode.Create))
+                        short from = (short)(i - 1000);
+                        short to = i;
+                        drawer(clone, from, to);
+                        using (FileStream stream5 = new FileStream(System.IO.Path.GetDirectoryName(sfd.FileName) + "\\" + System.IO.Path.GetFileNameWithoutExtension(sfd.FileName) + string.Format("{0}-{1}", from, to) + ".png", FileMode.Create))
                         {
                             PngBitmapEncoder encoder5 = new PngBitmapEncoder();
                             encoder5.Frames.Add(BitmapFrame.Create(clone));

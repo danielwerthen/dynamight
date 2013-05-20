@@ -8,6 +8,7 @@
         <Image Width="640" Height="480" Name="ImageRight" HorizontalAlignment="Right" VerticalAlignment="Top"></Image>
         <Image Width="640" Height="480" Name="DrawRight" HorizontalAlignment="Right" VerticalAlignment="Top"></Image>
         <Image Width="640" Height="480" Name="ImageLeftBot" HorizontalAlignment="Left" VerticalAlignment="Bottom"></Image>
+        <Image Width="640" Height="480" Name="DrawLeftBot" HorizontalAlignment="Left" VerticalAlignment="Bottom"></Image>
         <Image Width="640" Height="480" Name="ImageRightBot" HorizontalAlignment="Right" VerticalAlignment="Bottom"></Image>
     </Grid>
 </Window>

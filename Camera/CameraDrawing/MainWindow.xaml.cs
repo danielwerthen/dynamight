@@ -1,6 +1,7 @@
 ﻿using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -83,12 +84,13 @@ namespace CameraDrawing
             var connected = KinectSensor.KinectSensors.Where(row => row.Status == KinectStatus.Connected);
             var sensor2 = connected.FirstOrDefault();
             var sensor1 = connected.Skip(1).FirstOrDefault();
+            
             int angle = 0;
             if (sensor1 != null)
             {
                 depth(sensor1, ImageLeft);
                 skeleton(sensor1, DrawLeft);
-                infra(sensor1, ImageLeftBot);
+                color(sensor1, ImageLeftBot, DrawLeftBot);
                 sensor1.Start();
                 sensor1.ElevationAngle = angle;
             }
@@ -97,12 +99,13 @@ namespace CameraDrawing
             {
                 depth(sensor2, ImageRight);
                 skeleton(sensor2, DrawRight);
-                infra(sensor2, ImageRightBot);
+                color(sensor2, ImageRightBot, DrawRight);
                 sensor2.Start();
                 sensor2.ElevationAngle = angle;
             }
 
         }
+
 
         private void skeleton(KinectSensor sensor, Image Image)
         {
@@ -259,12 +262,15 @@ namespace CameraDrawing
             };
         }
 
-        private void color(KinectSensor sensor, Image Image)
+        private void color(KinectSensor sensor, Image Image, Image DrawImage)
         {
             sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
             var colorPixels = new byte[sensor.ColorStream.FramePixelDataLength];
             var colorBitmap = new WriteableBitmap(sensor.ColorStream.FrameWidth, sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
             Image.Source = colorBitmap;
+            var drawingGroup = new DrawingGroup();
+            var imageSource = new DrawingImage(drawingGroup);
+            DrawImage.Source = imageSource;
             sensor.ColorFrameReady += (o, arg) =>
             {
                 using (ColorImageFrame colorFrame = arg.OpenColorImageFrame())
@@ -280,10 +286,19 @@ namespace CameraDrawing
                             colorPixels,
                             colorBitmap.PixelWidth * colorFrame.BytesPerPixel,
                             0);
+                        if (drawRectangles)
+                        {
+                            using (DrawingContext dc = drawingGroup.Open())
+                            {
+                                ImageProc.Rectangle(colorBitmap, dc);
+                            }
+                            drawRectangles = false;
+                        }
                     }
                 }
             };
         }
+        bool drawRectangles = false;
 
         private void depth(KinectSensor sensor, Image Image)
         {
@@ -416,6 +431,8 @@ namespace CameraDrawing
 
         private void Window_KeyUp(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.R)
+                drawRectangles = true;
             if (e.Key == Key.Space)
             {
                 openCloseup = (bitmap, drawer) =>
