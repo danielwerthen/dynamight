@@ -1,0 +1,25 @@
+﻿<Window x:Class="CameraDrawing.StillCloseup"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="StillCloseup" WindowState="Maximized" ResizeMode="NoResize">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="100"/>
+        </Grid.ColumnDefinitions>
+        <Image Name="Image"></Image>
+        <StackPanel Orientation="Vertical" Grid.Column="1">
+            <Grid Grid.Column="1" Height="900">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Slider Name="MinSlider" Orientation="Vertical"/>
+
+                <Slider Name="MaxSlider" Grid.Column="1" Orientation="Vertical"/>
+            </Grid>
+            <Button VerticalAlignment="Bottom" Content="Save Img Range" Name="SaveRangeButton" Grid.Column="1"/>
+
+        </StackPanel>
+    </Grid>
+</Window>
