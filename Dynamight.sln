@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinectApp", "Kinect\KinectA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CameraDrawing", "Camera\CameraDrawing\CameraDrawing.csproj", "{002C04C2-D867-4270-8136-88EEBE159E86}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinectOutput", "Camera\KinectOutput\KinectOutput.csproj", "{E2CEDEB6-6262-4A84-B15D-F4AA96C8D785}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{002C04C2-D867-4270-8136-88EEBE159E86}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{002C04C2-D867-4270-8136-88EEBE159E86}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{002C04C2-D867-4270-8136-88EEBE159E86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2CEDEB6-6262-4A84-B15D-F4AA96C8D785}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2CEDEB6-6262-4A84-B15D-F4AA96C8D785}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2CEDEB6-6262-4A84-B15D-F4AA96C8D785}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2CEDEB6-6262-4A84-B15D-F4AA96C8D785}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
