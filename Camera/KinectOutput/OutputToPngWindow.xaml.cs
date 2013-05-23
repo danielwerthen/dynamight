@@ -175,7 +175,7 @@ namespace KinectOutput
             {
                 SaveFileDialog sfd = new SaveFileDialog();
                 sfd.AddExtension = true;
-                sfd.FileName = DateTime.Now.ToString("ddMMyyhhmm");
+                sfd.FileName = DateTime.Now.ToString("ddMMyyhhmmss");
                 sfd.DefaultExt = "png";
                 sfd.Filter = "Image files (*.png)|*.png";
                 if (sfd.ShowDialog() == true)

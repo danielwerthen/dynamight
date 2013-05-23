@@ -1,8 +1,14 @@
 ﻿<Window x:Class="KinectOutput.OverviewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:local="clr-namespace:KinectOutput"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OverviewWindow" Height="750" Width="750" ResizeMode="NoResize" Loaded="Window_Loaded">
-    <Grid Name="Holder">
-        <Image Name="Background"/>
+        Title="OverviewWindow" Height="750" Width="950" ResizeMode="NoResize" Loaded="Window_Loaded">
+    <Grid>
+        <Grid Name="Holder" Height="750" Width="750" HorizontalAlignment="Left">
+            <Image Name="BackgroundImage"/>
+        </Grid>
+        <Grid Width="200" HorizontalAlignment="Right">
+            <local:ConfidencePrintout x:Name="ConfidenceView"/>
+        </Grid>
     </Grid>
 </Window>
