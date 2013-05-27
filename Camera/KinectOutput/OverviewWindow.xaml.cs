@@ -34,20 +34,35 @@ namespace KinectOutput
 
         string sensorId1;
         string sensorId2;
+        Dictionary<string, string> kinectNames;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            var window = sender as Window;
-            pwidth = (int)window.Width;
-            pheight = (int)window.Height;
+        }
+
+        private void Holder_Loaded(object sender, RoutedEventArgs e)
+        {
+            var grid = sender as Grid;
+            pwidth = (int)grid.Width;
+            pheight = (int)grid.Height;
             ppgridLine = pwidth / gridCount;
             var connected = KinectSensor.KinectSensors.Where(row => row.Status == KinectStatus.Connected);
             DrawBackground(BackgroundImage);
+            kinectNames = new Dictionary<string, string>();
             sensorId2 = connected.Select(row => row.UniqueKinectId).First();
+            kinectNames[sensorId2] = "Right";
             sensorId1 = connected.Select(row => row.UniqueKinectId).Skip(1).First();
+            kinectNames[sensorId1] = "Left";
             foreach (var sensor in connected)
             {
                 InitSensor(sensor);
+                var cbutton = new Button();
+                cbutton.Content = "Kinect " + kinectNames[sensor.UniqueKinectId];
+                cbutton.Click += (o, arg) =>
+                {
+                    KinectCalibrationWindow.Calibrate(sensor);
+                };
+                CalibrationButtons.Children.Add(cbutton);
             }
         }
 
@@ -95,7 +110,7 @@ namespace KinectOutput
             };
             Holder.Children.Add(image);
             sensor.Start();
-            sensor.ElevationAngle = 10;
+            sensor.ElevationAngle = 0;
         }
 
         #region Transforms
@@ -108,7 +123,7 @@ namespace KinectOutput
             if (sensor.UniqueKinectId == sensorId1)
                 return kinectPositions[sensor.UniqueKinectId] = new Point(ppgridLine, ppgridLine);
             else
-                return kinectPositions[sensor.UniqueKinectId] = new Point(ppgridLine + ppgridLine*1.46, ppgridLine);
+                return kinectPositions[sensor.UniqueKinectId] = new Point(ppgridLine + ppgridLine*1.53, ppgridLine);
 
         }
 

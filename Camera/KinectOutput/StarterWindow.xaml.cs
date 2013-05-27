@@ -42,10 +42,16 @@ namespace KinectOutput
             window.ShowDialog();
         }
 
+        private void CameraOffsetButton_Click(object sender, RoutedEventArgs e)
+        {
+            CameraOffsetWindow window = new CameraOffsetWindow();
+            window.ShowDialog();
+        }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             //Default
-            OverviewWindow window = new OverviewWindow();
+            var window = new OverviewWindow();
             window.ShowDialog();
         }
     }

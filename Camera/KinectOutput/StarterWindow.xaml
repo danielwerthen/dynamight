@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="StarterWindow" Height="300" Width="300" Loaded="Window_Loaded">
     <StackPanel>
-        <Button Height="75" Content="Kinect Output To Png" Name="OutputToPngButton" Click="OutputToPngButton_Click"/>
-        <Button Height="75" Content="Skeleton Tracker" Name="SkeletonButton" Click="SkeletonButton_Click"/>
-        <Button Height="75" Content="Overview" Name="OverviewButton" Click="OverviewButton_Click"/>
+        <Button Content="Kinect Output To Png" Name="OutputToPngButton" Click="OutputToPngButton_Click"/>
+        <Button Content="Skeleton Tracker" Name="SkeletonButton" Click="SkeletonButton_Click"/>
+        <Button Content="Overview" Name="OverviewButton" Click="OverviewButton_Click"/>
+        <Button Content="CameraOffset" Name="CameraOffsetButton" Click="CameraOffsetButton_Click"/>
     </StackPanel>
 </Window>

@@ -2,13 +2,24 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:local="clr-namespace:KinectOutput"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OverviewWindow" Height="750" Width="950" ResizeMode="NoResize" Loaded="Window_Loaded">
+        Title="OverviewWindow" Height="750" Width="1150" ResizeMode="NoResize" Loaded="Window_Loaded">
     <Grid>
-        <Grid Name="Holder" Height="750" Width="750" HorizontalAlignment="Left">
+        <Grid Name="Holder" Height="750" Width="750" HorizontalAlignment="Left" Loaded="Holder_Loaded">
             <Image Name="BackgroundImage"/>
         </Grid>
-        <Grid Width="200" HorizontalAlignment="Right">
+        <Grid Width="400" HorizontalAlignment="Right">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
             <local:ConfidencePrintout x:Name="ConfidenceView"/>
+            <StackPanel Orientation="Vertical" Grid.Column="1">
+                <GroupBox Header="Calibrate">
+                    <StackPanel Orientation="Vertical"  Name="CalibrationButtons">
+                        
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

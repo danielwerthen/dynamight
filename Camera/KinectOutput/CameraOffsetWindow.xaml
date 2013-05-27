@@ -1,0 +1,11 @@
+﻿<Window x:Class="KinectOutput.CameraOffsetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CameraOffsetWindow" Height="480" Width="1280" Loaded="Window_Loaded">
+    <Grid>
+        <Image Name="BackImage" Width="640" HorizontalAlignment="Left"/>
+        <Image Name="ForeImage" Opacity="0.5" Width="640" HorizontalAlignment="Left"/>
+        <Image Name="BackImageRight" Width="640" HorizontalAlignment="Right"/>
+        <Image Name="ForeImageRight" Opacity="0.5" Width="640" HorizontalAlignment="Right"/>
+    </Grid>
+</Window>
