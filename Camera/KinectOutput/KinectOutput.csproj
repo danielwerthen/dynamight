@@ -62,6 +62,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="CalibrationResult.cs" />
     <Compile Include="CameraOffsetWindow.xaml.cs">
       <DependentUpon>CameraOffsetWindow.xaml</DependentUpon>
     </Compile>
@@ -69,6 +70,7 @@
     <Compile Include="ConfidencePrintout.xaml.cs">
       <DependentUpon>ConfidencePrintout.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Coordinator.cs" />
     <Compile Include="KinectCalibrationWindow.xaml.cs">
       <DependentUpon>KinectCalibrationWindow.xaml</DependentUpon>
     </Compile>

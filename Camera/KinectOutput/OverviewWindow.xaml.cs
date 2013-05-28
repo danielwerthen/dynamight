@@ -1,4 +1,5 @@
-﻿using Microsoft.Kinect;
+﻿using MathNet.Numerics.LinearAlgebra.Double;
+using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +24,7 @@ namespace KinectOutput
         int pwidth;
         int pheight;
         Brush BackgroundBrush = Brushes.DarkGray;
-        int gridCount = 4;
+        int gridCount = 6;
         int ppgridLine = 50;
         Pen linePen = new Pen(Brushes.LightGray, 1);
 
@@ -51,8 +52,11 @@ namespace KinectOutput
             kinectNames = new Dictionary<string, string>();
             sensorId2 = connected.Select(row => row.UniqueKinectId).First();
             kinectNames[sensorId2] = "Right";
+            Coordinator.LoadCalibration(sensorId2);
             sensorId1 = connected.Select(row => row.UniqueKinectId).Skip(1).First();
             kinectNames[sensorId1] = "Left";
+            Coordinator.LoadCalibration(sensorId1);
+
             foreach (var sensor in connected)
             {
                 InitSensor(sensor);
@@ -60,7 +64,8 @@ namespace KinectOutput
                 cbutton.Content = "Kinect " + kinectNames[sensor.UniqueKinectId];
                 cbutton.Click += (o, arg) =>
                 {
-                    KinectCalibrationWindow.Calibrate(sensor);
+                    var result = KinectCalibrationWindow.Calibrate(sensor);
+                    Coordinator.SetResult(sensor, result);
                 };
                 CalibrationButtons.Children.Add(cbutton);
             }
@@ -169,7 +174,7 @@ namespace KinectOutput
             }
         }
 
-        private Point Transform(KinectSensor sensor, SkeletonPoint sp)
+        private Point TransformObsolete(KinectSensor sensor, SkeletonPoint sp)
         {
             var center = GetKinectCenter(sensor);
             var transform = GetKinectTransform(sensor);
@@ -177,12 +182,25 @@ namespace KinectOutput
             return new Point(res[0] * ppgridLine + center.X, res[2] * ppgridLine + center.Y);
         }
 
-        private Point Transform(KinectSensor sensor, double x, double y, double z)
+        private Point TransformObsolete(KinectSensor sensor, double x, double y, double z)
         {
             var center = GetKinectCenter(sensor);
             var transform = GetKinectTransform(sensor);
             var res = transform(new double[] { x, y, z });
             return new Point(res[0] * ppgridLine + center.X, res[2] * ppgridLine + center.Y);
+        }
+
+        private Point Transform(KinectSensor sensor, SkeletonPoint sp)
+        {
+            var transform = Coordinator.GetTransform(sensor);
+            var res = transform(new double[] { sp.X, sp.Y, sp.Z });
+            return new Point(res[0] * ppgridLine + 3 * ppgridLine, res[2] * ppgridLine + 3 * ppgridLine);
+        }
+        private Point Transform(KinectSensor sensor, double x, double y, double z)
+        {
+            var transform = Coordinator.GetTransform(sensor);
+            var res = transform(new double[] { x, y, z });
+            return new Point(res[0] * ppgridLine + 3 * ppgridLine, res[2] * ppgridLine + 3 * ppgridLine);
         }
 
         #endregion

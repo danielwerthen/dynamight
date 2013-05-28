@@ -10,7 +10,7 @@
             <ToggleButton Name="Pred" Content="Point Red" Checked="Pred_Checked"/>
             <ToggleButton Name="Pblue" Content="Point Blue" Checked="Pblue_Checked"/>
             <ToggleButton Name="Pyellow" Content="Point Yellow" Checked="Pyellow_Checked"/>
-            <Button Name="OK" Content="OK"/>
+            <Button Name="OK" Content="OK" Click="OK_Click"/>
         </StackPanel>
     </Grid>
 </Window>

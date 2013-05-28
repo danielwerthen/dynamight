@@ -29,7 +29,7 @@ namespace KinectOutput
             Display.MouseDown += Display_MouseDown;
         }
 
-        public static void Calibrate(KinectSensor sensor)
+        public static CalibrationResult Calibrate(KinectSensor sensor)
         {
             if (!sensor.IsRunning)
                 sensor.Start();
@@ -37,6 +37,7 @@ namespace KinectOutput
             window.color(sensor, window.Display);
             var res = window.ShowDialog();
             window.Cleanup(sensor);
+            return new CalibrationResult() { P0 = window.p0, F1 = window.f1, F2 = window.f2, F3 = window.f3 };
         }
 
         private void Cleanup(KinectSensor sensor)
@@ -145,6 +146,7 @@ namespace KinectOutput
                             ColorToggle(Pred, pRed, dRed);
                             ColorToggle(Pblue, pBlue, dBlue);
                             ColorToggle(Pyellow, pYellow, dYellow);
+                            IsValid = false;
                             if (dBlue.HasValue && dRed.HasValue && dYellow.HasValue)
                                 computeTransform();
                             using (var dc = drawingGroup.Open())
@@ -159,6 +161,7 @@ namespace KinectOutput
         }
 
         public Vector<double> f1, f2, f3, p0;
+        public bool IsValid;
         private void computeTransform()
         {
             Func<SkeletonPoint, Vector<double>> conv = (sp) => new DenseVector(new double[] { sp.X, sp.Y, sp.Z });
@@ -172,6 +175,7 @@ namespace KinectOutput
             f1 = (f1 - (f1.DotProduct(f2) * f2)).Normalize(1);
             f3 = new DenseVector(new double[] { f1[1] * f2[2] - f1[2] * f2[1], f1[2] * f2[0] - f1[0] * f2[2], f1[0] * f2[1] - f1[1] * f2[0] });
             f3 = f3.Normalize(1);
+            IsValid = true;
         }
 
         private void drawAxes(KinectSensor sensor, DrawingContext dc)
@@ -341,6 +345,12 @@ namespace KinectOutput
                 Pyellow.IsChecked = false;
                 PointSetter = null;
             };
+        }
+
+        private void OK_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = true;
+            this.Close();
         }
     }
 }
