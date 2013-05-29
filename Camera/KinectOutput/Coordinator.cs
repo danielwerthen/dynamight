@@ -36,12 +36,12 @@ namespace KinectOutput
             }
         }
 
-        public static void LoadCalibration(string id)
+        public static CalibrationResult? LoadCalibration(string id)
         {
             try
             {
                 if (!File.Exists(IdToFileName(id)))
-                    return;
+                    return null;
                 using (var file = new StreamReader(IdToFileName(id)))
                 {
                     XDocument doc = XDocument.Load(file);
@@ -54,9 +54,11 @@ namespace KinectOutput
                         F3 = DenseVector.OfEnumerable(row.Element(ns + "F3").Elements().Select(d => double.Parse(d.Value, CultureInfo.InvariantCulture))),
                     }).First();
                     _setResult(id, result);
+                    return result;
                 }
             }
             catch (Exception) { }
+            return null;
         }
 
         public static void SetResult(KinectSensor sensor, CalibrationResult result)
@@ -71,6 +73,8 @@ namespace KinectOutput
         }
         public static void _setResult(string id, CalibrationResult result)
         {
+            if (result.P0 == null || result.F1 == null || result.F2 == null || result.F3 == null)
+                return;
             var mat = DenseMatrix.OfColumns(4, 4, new double[][] { result.F1.Concat(new double[] {0}).ToArray(),
                 result.F2.Concat(new double[] {0}).ToArray(),
                 result.F3.Concat(new double[] {0}).ToArray(),

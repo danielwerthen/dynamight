@@ -1,0 +1,25 @@
+﻿<Window x:Class="KinectOutput.CalibrateProjectorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CalibrateProjectorWindowxaml" Height="640" Width="640" Loaded="Window_Loaded">
+    <Grid>
+        <StackPanel Orientation="Horizontal">
+            <GroupBox Header="RT" Width="150" Height="150" VerticalAlignment="Top">
+                <Grid Name="RTGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </GroupBox>
+        </StackPanel>
+    </Grid>
+</Window>

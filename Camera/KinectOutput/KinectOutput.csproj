@@ -62,6 +62,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="CalibrateProjectorWindow.xaml.cs">
+      <DependentUpon>CalibrateProjectorWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="CalibrationResult.cs" />
     <Compile Include="CameraOffsetWindow.xaml.cs">
       <DependentUpon>CameraOffsetWindow.xaml</DependentUpon>
@@ -83,6 +86,10 @@
     <Compile Include="StarterWindow.xaml.cs">
       <DependentUpon>StarterWindow.xaml</DependentUpon>
     </Compile>
+    <Page Include="CalibrateProjectorWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="CameraOffsetWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

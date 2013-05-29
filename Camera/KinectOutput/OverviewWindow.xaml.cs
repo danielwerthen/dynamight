@@ -69,6 +69,57 @@ namespace KinectOutput
                 };
                 CalibrationButtons.Children.Add(cbutton);
             }
+
+            InitProjector();
+        }
+
+        private Action drawProjector;
+        private void InitProjector()
+        {
+            var image = new Image();
+            var drawingGroup = new DrawingGroup();
+            var imageSource = new DrawingImage(drawingGroup);
+            image.Source = imageSource;
+
+            drawProjector = () =>
+            {
+                using (var dc = drawingGroup.Open())
+                {
+                    dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, pwidth, pheight));
+                    var transform = Coordinator.GetTransform("projector");
+                    Func<double[], Point> tf = (v) =>
+                        {
+                            var tv = transform(v);
+                            return new Point(tv[0] * ppgridLine + 3 * ppgridLine, tv[2] * ppgridLine + 3 * ppgridLine);
+                        };
+                    double scale = 0.1;
+                    dc.DrawGeometry(Brushes.Purple, null, new PathGeometry(new PathFigure[] 
+                    {
+                        new PathFigure(tf(new double[] { 0,0,0 }), new PathSegment[] {
+                            new LineSegment(tf(new double[] { 0,0,-1 * scale }), true),
+                            new LineSegment(tf(new double[] { -2 * scale,0,-1 * scale }), true),
+                            new LineSegment(tf(new double[] { -2 * scale,0,1 * scale }), true),
+                            new LineSegment(tf(new double[] { 0 * scale,0,1 * scale }), true),
+                            new LineSegment(tf(new double[] { -1 * scale,0,2 * scale }), true),
+                            new LineSegment(tf(new double[] { 1 * scale,0,2 * scale }), true),
+                            new LineSegment(tf(new double[] { 0 * scale,0,1 * scale }), true),
+                            new LineSegment(tf(new double[] { 2 * scale,0,1 * scale }), true),
+                            new LineSegment(tf(new double[] { 2 * scale,0,-1 * scale }), true),
+                            new LineSegment(tf(new double[] { 0 * scale,0,-1 * scale }), true),
+                        }, true)
+                    }));
+                }
+            };
+            drawProjector();
+            var cbutton = new Button();
+            cbutton.Content = "Projector";
+            cbutton.Click += (o, arg) =>
+            {
+                CalibrateProjectorWindow.Calibrate("projector", drawProjector);
+            };
+            CalibrationButtons.Children.Add(cbutton);
+
+            Holder.Children.Add(image);
         }
 
         private void InitSensor(KinectSensor sensor)
