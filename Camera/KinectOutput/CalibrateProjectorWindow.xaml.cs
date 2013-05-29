@@ -29,25 +29,69 @@ namespace KinectOutput
 
         private string projectorId;
         private Action redraw;
+        NotifyVectorValue<double>[] RT = new NotifyVectorValue<double>[4];
+        NotifyVectorValue<double>[] A = new NotifyVectorValue<double>[3];
+        NotifyVectorValue<bool> normalize = new NotifyVectorValue<bool>(new bool[] { true, true, true, false });
+        Vector<double>[] RTinit = null;
+        Vector<double>[] Ainit = null;
+
         public static void Calibrate(string projectorId, Action redraw)
         {
             CalibrateProjectorWindow window = new CalibrateProjectorWindow();
             window.projectorId = projectorId;
 
-            var init = Coordinator.LoadCalibration(projectorId);
+            var init = Coordinator.GetCalibration(projectorId);
             if (init.HasValue)
-                window.RTinit = new Vector<double>[] { init.Value.F1, init.Value.F2, init.Value.F3, init.Value.P0 };
+            {
+                if (init.Value.F1 != null && init.Value.F2 != null && init.Value.F3 != null && init.Value.P0 != null)
+                    window.RTinit = new Vector<double>[] { init.Value.F1, init.Value.F2, init.Value.F3, init.Value.P0 };
+                if (init.Value.A1 != null && init.Value.A2 != null && init.Value.A3 != null)
+                    window.Ainit = new Vector<double>[] { init.Value.A1, init.Value.A2, init.Value.A3 };
+            }
+            if (window.RTinit == null)
+            {
+                window.RTinit = (new double[][] { new double[] { 1, 0, 0, 0 },
+                    new double[] { 0, 1, 0, 0 },
+                    new double[] { 0, 0, 1, 0 },
+                    new double[] { 0, 0, 0, 1 }, }).Select(row => new DenseVector(row)).ToArray();
+            }
+            if (window.Ainit == null)
+            {
+                window.Ainit = (new double[][] { new double[] { 1, 0, 0 },
+                    new double[] { 0, 1, 0},
+                    new double[] { 0, 0, 1 }, }).Select(row => new DenseVector(row)).ToArray();
+            }
             window.redraw = redraw;
             window.Show();
         }
 
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             InitMatrix(4, 4, RTGrid, RT, RTinit);
+            InitMatrix(3, 3, AGrid, A, Ainit);
+            InitNorms();
         }
 
-        NotifyVectorValue[] RT = new NotifyVectorValue[4];
-        Vector<double>[] RTinit = null;
+        private void InitNorms()
+        {
+            var names = new string[] { "X", "Y", "Z", "H" };
+            for (var r = 0; r < 3; r++)
+            {
+                CheckBox cb = new CheckBox();
+                Grid.SetRow(cb, r);
+                cb.Content = names[r] + "?";
+                cb.Checked += (o, e) => this.update();
+                cb.Unchecked += (o, e) => this.update();
+                cb.IsChecked = normalize[r];
+                Binding b = new Binding(names[r]);
+                b.Source = normalize;
+                b.Mode = BindingMode.TwoWay;
+                BindingOperations.SetBinding(cb, CheckBox.IsCheckedProperty, b);
+                NormGrid.Children.Add(cb);
+            }
+        }
+
 
         private void update()
         {
@@ -55,20 +99,24 @@ namespace KinectOutput
             {
                 Coordinator.SetResult(projectorId, new CalibrationResult()
                 {
-                    F1 = RT[0],
-                    F2 = RT[1],
-                    F3 = RT[2],
+                    F1 = normalize[0] ? ((DenseVector)RT[0]).Normalize(1) : RT[0],
+                    F2 = normalize[1] ? ((DenseVector)RT[1]).Normalize(1) : RT[1],
+                    F3 = normalize[2] ? ((DenseVector)RT[2]).Normalize(1) : RT[2],
                     P0 = RT[3],
+                    A1 = A[0],
+                    A2 = A[1],
+                    A3 = A[2],
                 });
             }
             this.redraw();
         }
 
-        private void InitMatrix(int rows, int cols, Grid grid, NotifyVectorValue[] store, Vector<double>[] init)
+        private void InitMatrix(int rows, int cols, Grid grid, NotifyVectorValue<double>[] store, Vector<double>[] init)
         {
+            var names = new string[] { "X", "Y", "Z", "H" };
             for (var c = 0; c < cols; c++)
             {
-                var vals = store[c] = init != null ? new NotifyVectorValue(init[c]) : new NotifyVectorValue();
+                var vals = store[c] = init != null ? new NotifyVectorValue<double>(init[c]) : new NotifyVectorValue<double>();
                 for (var r = 0; r < rows; r++)
                 {
                         var tb = new TextBox();
@@ -76,11 +124,11 @@ namespace KinectOutput
                         Grid.SetColumn(tb, c);
                         Grid.SetRow(tb, r);
                         vals.PropertyChanged += (o, e) => this.update();
-                        Binding valBind = new Binding("Value");
+                        Binding valBind = new Binding(names[r]);
                         valBind.Mode = BindingMode.TwoWay;
                         valBind.NotifyOnValidationError = true;
                         valBind.ValidatesOnExceptions = true;
-                        valBind.Source = vals[r];
+                        valBind.Source = vals;
                         BindingOperations.SetBinding(tb, TextBox.TextProperty, valBind);
                         grid.Children.Add(tb);
                 }
@@ -89,25 +137,27 @@ namespace KinectOutput
         }
     }
 
-    public class NotifyVectorValue : INotifyPropertyChanged
+    public class NotifyVectorValue<T> : INotifyPropertyChanged
     {
         public NotifyVectorValue()
         {
         }
-        public NotifyVectorValue(Vector<double> vec)
+        
+        public NotifyVectorValue(IEnumerable<T> vec)
         {
-            X = vec[0];
-            Y = vec[1];
-            Z = vec[2];
-            H = vec[3];
+            X = vec.ElementAt(0);
+            Y = vec.ElementAt(1);
+            Z = vec.ElementAt(2);
+            if (vec.Count() >= 4)
+                H = vec.ElementAt(3);
         }
 
-        public static implicit operator Vector<double>(NotifyVectorValue vec)
+        public static implicit operator Vector<double>(NotifyVectorValue<T> vec)
         {
-            return new DenseVector(new double[] { vec.X, vec.Y, vec.Z, vec.H });
+            return new DenseVector(new double[] { (double)(object)vec.X, (double)(object)vec.Y, (double)(object)vec.Z, (double)(object)vec.H });
         }
 
-        public double this[int idx]
+        public T this[int idx]
         {
             get
             {
@@ -115,13 +165,13 @@ namespace KinectOutput
                 if (idx == 1) return Y;
                 if (idx == 2) return Z;
                 if (idx == 3) return H;
-                return 0;
+                return default(T);
             }
         }
 
-        private double _x;
+        private T _x;
 
-        public double X
+        public T X
         {
             get
             { 
@@ -134,9 +184,9 @@ namespace KinectOutput
             }
         }
 
-        private double _y;
+        private T _y;
 
-        public double Y
+        public T Y
         {
             get
             {
@@ -149,9 +199,9 @@ namespace KinectOutput
             }
         }
 
-        private double _z;
+        private T _z;
 
-        public double Z
+        public T Z
         {
             get
             {
@@ -164,9 +214,9 @@ namespace KinectOutput
             }
         }
 
-        private double _h;
+        private T _h;
 
-        public double H
+        public T H
         {
             get
             {

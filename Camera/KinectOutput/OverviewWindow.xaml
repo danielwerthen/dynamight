@@ -19,6 +19,11 @@
                         
                     </StackPanel>
                 </GroupBox>
+                <GroupBox Header="Actions">
+                    <StackPanel Orientation="Vertical"  Name="ActionButtons">
+
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
         </Grid>
     </Grid>

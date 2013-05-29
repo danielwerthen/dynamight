@@ -20,6 +20,7 @@ namespace KinectOutput
         {
             public CalibrationResult Data { get; set; }
             public Func<double[], double[]> Transform { get; set; }
+            public Func<double[], double[]> Inverse { get; set; }
         }
 
         private static string IdToFileName(string id)
@@ -36,12 +37,19 @@ namespace KinectOutput
             }
         }
 
-        public static CalibrationResult? LoadCalibration(string id)
+        public static CalibrationResult? GetCalibration(string id)
+        {
+            if (results.ContainsKey(id))
+                return Coordinator.results[id].Data;
+            return null;
+        }
+
+        public static void LoadCalibration(string id)
         {
             try
             {
                 if (!File.Exists(IdToFileName(id)))
-                    return null;
+                    return;
                 using (var file = new StreamReader(IdToFileName(id)))
                 {
                     XDocument doc = XDocument.Load(file);
@@ -54,11 +62,9 @@ namespace KinectOutput
                         F3 = DenseVector.OfEnumerable(row.Element(ns + "F3").Elements().Select(d => double.Parse(d.Value, CultureInfo.InvariantCulture))),
                     }).First();
                     _setResult(id, result);
-                    return result;
                 }
             }
             catch (Exception) { }
-            return null;
         }
 
         public static void SetResult(KinectSensor sensor, CalibrationResult result)
@@ -78,18 +84,42 @@ namespace KinectOutput
             var mat = DenseMatrix.OfColumns(4, 4, new double[][] { result.F1.Concat(new double[] {0}).ToArray(),
                 result.F2.Concat(new double[] {0}).ToArray(),
                 result.F3.Concat(new double[] {0}).ToArray(),
-                result.P0.Concat(new double[] {1}).ToArray() }).Inverse();
+                result.P0.Concat(new double[] {1}).ToArray() });
+
+            if (result.A1 != null && result.A2 != null && result.A3 != null)
+            {
+                var matA = DenseMatrix.OfColumns(4,4, new double[][] { result.A1.ToArray(), result.A2.ToArray(), result.A3.ToArray(), new double[4] { 0, 0, 0, 1} });
+                mat = matA * mat;
+            }
+            var inv = mat.Inverse();
             results[id] = new Transformer()
             {
                 Data = result,
                 Transform = (v) =>
                 {
-                    return mat.Multiply(DenseVector.OfEnumerable(v.Concat(new double[] { 1 }))).ToArray();
+                    if (v.Count() == 3)
+                        return inv.Multiply(DenseVector.OfEnumerable(v.Concat(new double[] { 1 }))).ToArray();
+                    else
+                        return inv.Multiply(DenseVector.OfEnumerable(v)).ToArray();
+                },
+                Inverse = (v) =>
+                {
+                    if (v.Count() == 3)
+                        return mat.Multiply(DenseVector.OfEnumerable(v.Concat(new double[] { 1 }))).ToArray();
+                    else
+                        return mat.Multiply(DenseVector.OfEnumerable(v)).ToArray();
                 }
             };
         }
 
         private static Func<double[], double[]> Identity = (v) => v;
+
+        public static Func<double[], double[]> GetInverse(string id)
+        {
+            if (results.ContainsKey(id))
+                return results[id].Inverse;
+            return Identity;
+        }
 
         public static Func<double[], double[]> GetTransform(string id)
         {

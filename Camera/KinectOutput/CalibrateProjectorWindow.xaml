@@ -4,7 +4,21 @@
         Title="CalibrateProjectorWindowxaml" Height="640" Width="640" Loaded="Window_Loaded">
     <Grid>
         <StackPanel Orientation="Horizontal">
-            <GroupBox Header="RT" Width="150" Height="150" VerticalAlignment="Top">
+            <GroupBox Header="A" Width="150" Height="150" VerticalAlignment="Top">
+                <Grid Name="AGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </GroupBox>
+            <GroupBox Header="RT" Width="200" Height="200" VerticalAlignment="Top">
                 <Grid Name="RTGrid">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -18,6 +32,15 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
+                </Grid>
+            </GroupBox>
+            <GroupBox Header="Normalize R?" Width="100" Height="150" VerticalAlignment="Top">
+                <Grid Name="NormGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                 </Grid>
             </GroupBox>
         </StackPanel>

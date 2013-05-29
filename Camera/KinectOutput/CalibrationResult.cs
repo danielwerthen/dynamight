@@ -15,5 +15,8 @@ namespace KinectOutput
         public Vector<double> F1;
         public Vector<double> F2;
         public Vector<double> F3;
+        public Vector<double> A1;
+        public Vector<double> A2;
+        public Vector<double> A3;
     }
 }

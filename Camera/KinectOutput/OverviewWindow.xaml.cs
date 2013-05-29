@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+
 namespace KinectOutput
 {
     /// <summary>
@@ -69,7 +70,6 @@ namespace KinectOutput
                 };
                 CalibrationButtons.Children.Add(cbutton);
             }
-
             InitProjector();
         }
 
@@ -110,17 +110,51 @@ namespace KinectOutput
                     }));
                 }
             };
+            string projId = "projector";
+            Coordinator.LoadCalibration(projId);
             drawProjector();
             var cbutton = new Button();
             cbutton.Content = "Projector";
             cbutton.Click += (o, arg) =>
             {
-                CalibrateProjectorWindow.Calibrate("projector", drawProjector);
+                CalibrateProjectorWindow.Calibrate(projId, drawProjector);
             };
-            CalibrationButtons.Children.Add(cbutton);
+            CalibrationButtons.Children.Add(cbutton); 
+            var aButton = new Button();
+            aButton.Content = "Projector View";
+            aButton.Click += (o, arg) =>
+            {
+                try
+                {
+                    if (projViewWindow != null)
+                    {
+                        projViewWindow.Close();
+                        return;
+                    }
+                    projViewWindow = new ProjectorViewWindow();
+                    projViewWindow.Loaded += (o2, e2) =>
+                    {
+                        RenderCharacters = projViewWindow.GetRenderer();
+                        RenderCharacters(null);
+                    };
+                    projViewWindow.Show();
+                    projViewWindow.Closed += (o2, e2) =>
+                        {
+                            projViewWindow = null;
+                            RenderCharacters = null;
+                        };
+
+                }
+                catch (Exception)
+                {
+                }
+            };
+            ActionButtons.Children.Add(aButton);
 
             Holder.Children.Add(image);
         }
+
+        ProjectorViewWindow projViewWindow;
 
         private void InitSensor(KinectSensor sensor)
         {
@@ -143,6 +177,8 @@ namespace KinectOutput
                     }
 
                 }
+                if (RenderCharacters != null && sensor.UniqueKinectId == sensorId1)
+                    RenderCharacters(skeletons);
                 using (DrawingContext dc = drawingGroup.Open())
                 {
                     dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, pwidth, pheight));
@@ -151,10 +187,12 @@ namespace KinectOutput
                     ConfidenceView.Inactivate(sensor.UniqueKinectId);
                     if (skeletons.Length > 0)
                     {
+                        var sl  = new List<double[]>();
                         foreach (var skeleton in skeletons)
                         {
                             if (skeleton.TrackingState == SkeletonTrackingState.Tracked)
                             {
+                                sl.Add(Coordinator.GetTransform(sensor)(new double[] { skeleton.Position.X, skeleton.Position.Y, skeleton.Position.Z }));
                                 ConfidenceView.Measure(skeleton, sensor.UniqueKinectId);
                                 //dc.DrawEllipse(Brushes.Turquoise, null, new Point(pwidth / 2 + skeleton.Position.X * ppgridLine, 50 + skeleton.Position.Z * ppgridLine), 8, 8);
                                 //dc.DrawEllipse(GetTrackedBrush(sensor), null, Transform(sensor, skeleton.Position), 8, 8);
@@ -168,6 +206,8 @@ namespace KinectOutput
             sensor.Start();
             sensor.ElevationAngle = 0;
         }
+
+        Action<Skeleton[]> RenderCharacters;
 
         #region Transforms
 

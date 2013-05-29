@@ -1,0 +1,8 @@
+﻿<Window x:Class="KinectOutput.ProjectorViewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ProjectorViewWindow" Height="480" Width="640" WindowStartupLocation="Manual" KeyDown="Window_KeyDown" LayoutUpdated="Window_LayoutUpdated">
+    <Grid>
+        <Image Name="Display" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Stretch="None"></Image>
+    </Grid>
+</Window>
