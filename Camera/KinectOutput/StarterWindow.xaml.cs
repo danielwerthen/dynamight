@@ -54,5 +54,11 @@ namespace KinectOutput
             var window = new OverviewWindow();
             window.ShowDialog();
         }
+
+        private void SkeletonExport_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new KinectDataExportWindow();
+            window.ShowDialog();
+        }
     }
 }

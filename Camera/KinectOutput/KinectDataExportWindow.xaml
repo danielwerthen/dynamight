@@ -1,0 +1,20 @@
+﻿<Window x:Class="KinectOutput.KinectDataExportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KinectDataExportWindow" Height="480" Width="840" Loaded="Window_Loaded">
+    <Grid>
+        <Grid HorizontalAlignment="Left" Height="480" Width="640" Name="VideoView">
+            <Image Name="Image" HorizontalAlignment="Left" Height="480" Width="640"/>
+            <Image Name="DrawImage" HorizontalAlignment="Left" Height="480" Width="640"/>
+        </Grid>
+        <StackPanel HorizontalAlignment="Right" Orientation="Vertical">
+            <Button Name="RecordButton" Content="Record" Click="RecordButton_Click" Height="75" Width="75"/>
+            <Button Name="StopButton" Content="Stop" Click="StopButton_Click" Height="75" Width="75"/>
+            <Button Name="ExportButton" Content="Export Data" Click="ExportButton_Click" Height="75" Width="75"/>
+            <Button Name="ExportAviButton" Content="Export Avi" Click="ExportAviButton_Click"  Height="75" Width="75"/>
+            <Border Height="75">
+                <TextBlock Name="FramesLeftDisplay" Text="Waiting" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Window>

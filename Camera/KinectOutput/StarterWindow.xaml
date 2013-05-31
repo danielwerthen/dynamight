@@ -7,5 +7,6 @@
         <Button Content="Skeleton Tracker" Name="SkeletonButton" Click="SkeletonButton_Click"/>
         <Button Content="Overview" Name="OverviewButton" Click="OverviewButton_Click"/>
         <Button Content="CameraOffset" Name="CameraOffsetButton" Click="CameraOffsetButton_Click"/>
+        <Button Content="Kinect Skeleton Export" Name="SkeletonExport" Click="SkeletonExport_Click"/>
     </StackPanel>
 </Window>

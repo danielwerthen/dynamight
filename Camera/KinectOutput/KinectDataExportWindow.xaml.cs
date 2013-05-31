@@ -1,8 +1,12 @@
 ﻿using Microsoft.Kinect;
+using Microsoft.Win32;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,15 +16,15 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Xml.Linq;
 
 namespace KinectOutput
 {
     /// <summary>
-    /// Interaction logic for SkeletonWindow.xaml
+    /// Interaction logic for KinectDataExportWindow.xaml
     /// </summary>
-    public partial class SkeletonWindow : Window
+    public partial class KinectDataExportWindow : Window
     {
-
         /// <summary>
         /// Width of output drawing
         /// </summary>
@@ -65,20 +69,184 @@ namespace KinectOutput
         /// Pen used for drawing bones that are currently tracked
         /// </summary>
         private readonly Pen trackedBonePen = new Pen(Brushes.Green, 6);
-
         /// <summary>
         /// Pen used for drawing bones that are currently inferred
         /// </summary>        
         private readonly Pen inferredBonePen = new Pen(Brushes.Gray, 1);
-        public SkeletonWindow()
+
+        public class ExportFrame
+        {
+            public DateTime Time { get; set; }
+            public Skeleton[] TrackedSkeletons { get; set; }
+        }
+
+        private List<ExportFrame> exports = new List<ExportFrame>();
+        private bool record = false;
+
+        public KinectDataExportWindow()
         {
             InitializeComponent();
         }
 
+        private void RecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            exports = new List<ExportFrame>();
+            if (frames != null && frames.Count > 0)
+            {
+                System.Drawing.Bitmap frame;
+                while (frames.TryDequeue(out frame))
+                    frame.Dispose();
+            }
+            frames = new ConcurrentQueue<System.Drawing.Bitmap>();
+            record = true;
+
+        }
+
+        private void StopButton_Click(object sender, RoutedEventArgs e)
+        {
+            record = false;
+        }
+
+        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (exports == null || exports.Count == 0)
+                return;
+            XDocument doc = new XDocument();
+            XNamespace ns =  XNamespace.Get("http://www.dynamight.org/XML/KinectSkeletonExport/v.1");
+            doc.Add(new XElement(ns + "Frames",
+                exports.Select(row =>
+                    new XElement(ns + "Frame", new XAttribute("Time", row.Time.Ticks),
+                        row.TrackedSkeletons.Select(skeleton =>
+                                CreateXElement(ns, skeleton)))
+                    )));
+            SaveFileDialog sfd = new SaveFileDialog();
+            
+            if (sfd.ShowDialog() == true)
+            {
+                doc.Save(sfd.FileName);
+            }
+        }
+
+        private void ExportAviButton_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.DefaultExt = "avi";
+            sfd.Filter = "Video files (*.avi)|*.avi";
+            if (sfd.ShowDialog() == true)
+            {
+                StartVideoRecord(sfd.FileName);
+            }
+        }
+
+        private void StartVideoRecord(string filename)
+        {
+            Thread t = new Thread(() =>
+            {
+                var aviManager = new AviFile.AviManager(filename, false);
+
+                AviFile.VideoStream stream = null;
+                System.Drawing.Bitmap frame;
+                while(!frames.TryDequeue(out frame)) 
+                    Thread.Sleep(50);
+                stream = aviManager.AddVideoStream(true, 30, frame);
+                frame.Dispose();
+                while (frames.TryDequeue(out frame))
+                {
+                    stream.AddFrame(frame);
+                    frame.Dispose();
+                    Dispatcher.BeginInvoke((Action)(() =>
+                    {
+                        FramesLeftDisplay.Text = string.Format("{0} frames left", frames.Count);
+                    }));
+                }
+                aviManager.Close();
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    MessageBox.Show("Compression done!");
+                }));
+            });
+            t.Start();
+        }
+
+        private System.Drawing.Bitmap RenderBitmap(UIElement element)
+        {
+            Size size = element.RenderSize;
+            //RenderTargetBitmap rtb = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+            RenderTargetBitmap rtb = new RenderTargetBitmap(640, 480, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(element);
+            element.Measure(size);
+            element.Arrange(new Rect(size));
+
+            System.Drawing.Bitmap image;
+            using (var stream = new MemoryStream())
+            {
+                var encoder = new JpegBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(rtb));
+                encoder.Save(stream);
+                image = new System.Drawing.Bitmap(stream);
+            }
+            return image;
+        }
+
+        object syncRoot = new object();
+        ConcurrentQueue<System.Drawing.Bitmap> frames;
+
+        /*private void ExportAvi()
+        {
+            int dpi = 96;
+            int fps = 24;
+            int anim_length_in_secs = 5;
+            int num_total_frames = fps * anim_length_in_secs;
+
+            var secs = Enumerable.Range(0, num_total_frames).Select(t => (((double)t) / fps));
+            var aviManager = new AviFile.AviManager(filename, false);
+            AviFile.VideoStream aviStream = null;
+            foreach (var sec in secs)
+            {
+                clock.Controller.SeekAlignedToLastTick(TimeSpan.FromSeconds(sec),
+                                                       System.Windows.Media.Animation.TimeSeekOrigin.BeginTime);
+                this.canvas1.UpdateLayout();
+
+                string temp_bitmap = "d:\\canvas_frame.png";
+                util.SaveCanvas(this, this.canvas1, dpi, temp_bitmap);
+
+                System.Drawing.Bitmap bm = new System.Drawing.Bitmap(temp_bitmap);
+                if (aviStream == null)
+                {
+                    aviStream = aviManager.AddVideoStream(compress, fps, bm);
+                }
+                else
+                {
+                    aviStream.AddFrame(bm);
+
+                }
+                bm.Dispose();
+
+            }
+            aviManager.Close();
+        }*/
+
+        private static XElement CreateXElement(XNamespace ns, Skeleton skeleton)
+        {
+            return new XElement(ns + "Skeleton",
+                new XAttribute("X", skeleton.Position.X),
+                new XAttribute("Y", skeleton.Position.Y),
+                new XAttribute("Z", skeleton.Position.Z),
+                skeleton.Joints.Where(row => row.TrackingState != JointTrackingState.NotTracked).Select(joint => CreateXElement(ns, joint)));
+        }
+
+        private static XElement CreateXElement(XNamespace ns, Joint joint)
+        {
+            return new XElement(ns + "Joint",
+                new XAttribute("Type", joint.JointType.ToString()),
+                new XAttribute("Inferred", (joint.TrackingState == JointTrackingState.Inferred).ToString()),
+                new XAttribute("X", joint.Position.X),
+                new XAttribute("Y", joint.Position.Y),
+                new XAttribute("Z", joint.Position.Z));
+        }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
             var connected = KinectSensor.KinectSensors.Where(row => row.Status == KinectStatus.Connected);
             var sensor1 = connected.Skip(1).FirstOrDefault();
 
@@ -90,8 +258,8 @@ namespace KinectOutput
                 sensor1.Start();
                 sensor1.ElevationAngle = angle;
             }
-
         }
+
 
         private void skeleton(KinectSensor sensor, Image Image)
         {
@@ -113,6 +281,13 @@ namespace KinectOutput
                         frame.CopySkeletonDataTo(skeletons);
                     }
 
+                }
+                if (record)
+                {
+                    ExportFrame frame = new ExportFrame();
+                    frame.Time = DateTime.Now;
+                    frame.TrackedSkeletons = skeletons.Where(row => row.TrackingState == SkeletonTrackingState.Tracked).ToArray();
+                    exports.Add(frame);
                 }
 
                 using (DrawingContext dc = drawingGroup.Open())
@@ -295,6 +470,8 @@ namespace KinectOutput
                         colorBitmap.PixelWidth * sizeof(int),
                         0);
                 }
+                if (frames != null && record)
+                    frames.Enqueue(RenderBitmap(VideoView));
             };
         }
     }
