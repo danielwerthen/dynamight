@@ -1,7 +1,7 @@
-﻿using Emgu.CV;
+﻿using Dynamight.ImageProcessing.Util;
+using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
-using Emgu.CV.WPF;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,7 +39,6 @@ namespace ImageProcessing.VideoFeed
                 {
                     var img = capture.QueryFrame();
                     Emgu.CV.Contour<Bgr> con = new Contour<Bgr>(new MemStorage());
-                    
                     Display.Source = BitmapSourceConvert.ToBitmapSource(img);
                 };
         }

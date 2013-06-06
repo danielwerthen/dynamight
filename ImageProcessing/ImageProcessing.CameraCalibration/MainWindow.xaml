@@ -1,0 +1,21 @@
+﻿<Window x:Class="Dynamight.ImageProcessing.CameraCalibration.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MainWindow" Height="680" Width="840" Loaded="Window_Loaded">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="200"/>
+        </Grid.ColumnDefinitions>
+        <Image Name="Display"/>
+        <Image Name="CalibrationDisplay" Opacity="0.3"/>
+        <Image Name="DrawingDisplay"/>
+        <StackPanel Grid.Column="1" Orientation="Vertical">
+            <Button Name="CalibrateButton" Content="Calibrate" Click="CalibrateButton_Click"/>
+            <Button Name="FirstButton" Content="First Pic" Click="FirstButton_Click"/>
+            <Button Name="PixButton" Content="Next Pic" Click="PixButton_Click"/>
+            <ToggleButton Name="DetectButton" Content="Detect" Checked="DetectButton_Checked" Unchecked="DetectButton_Unchecked"/>
+            <TextBlock Name="TextDisplay"/>
+        </StackPanel>
+    </Grid>
+</Window>
