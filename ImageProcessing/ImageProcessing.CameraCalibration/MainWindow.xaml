@@ -15,7 +15,14 @@
             <Button Name="FirstButton" Content="First Pic" Click="FirstButton_Click"/>
             <Button Name="PixButton" Content="Next Pic" Click="PixButton_Click"/>
             <ToggleButton Name="DetectButton" Content="Detect" Checked="DetectButton_Checked" Unchecked="DetectButton_Unchecked"/>
-            <TextBlock Name="TextDisplay"/>
+            <TextBlock Name="TextDisplay" Height="25"/>
+            <Button Name="DetectCornersButton" Content="Detect Corners" Click="DetectCornersButton_Click"/>
+            <ToggleButton Name="BlackButton" Content="Black out projector" Checked="BlackButton_Checked" Unchecked="BlackButton_Unchecked"/>
+            <Button Name="ResetProjButton" Content="Reset projector" Click="ResetProjButton_Click"/>
+            <Button Name="StepProjButton" Content="Step projector" Click="StepProjButton_Click"/>
+            <Button Name="FirstProjButton" Content="Detect first" Click="FirstProjButton_Click"/>
+            <Button Name="NextProjButton" Content="Detect next" Click="NextProjButton_Click"/>
+            <Button Name="CalibrateProjButton" Content="Calibrate proj" Click="CalibrateProjButton_Click"/>
         </StackPanel>
     </Grid>
 </Window>
