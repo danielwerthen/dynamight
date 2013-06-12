@@ -46,16 +46,23 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         }
 
         ProjectorCalibration projector;
+        StructuredLightWindow slwindow;
         Bitmap bitmap;
         readonly object bitmapLock = new object();
         Emgu.CV.Structure.Gray[] gridColors;
+        Action<Bitmap> interpFeed;
+        Func<List<System.Drawing.Point>, List<System.Drawing.Point>> transformPoints;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            slwindow = new StructuredLightWindow();
+            slwindow.Show();
             projector = new ProjectorCalibration();
             projector.Show();
             var sensor = KinectSensor.KinectSensors.First();
             sensor.ColorStream.Enable(ColorImageFormat.RgbResolution1280x960Fps12);
+            
+            var rawColorPixels = new byte[sensor.ColorStream.FramePixelDataLength];
             var colorPixels = new byte[sensor.ColorStream.FramePixelDataLength];
             var colorBitmap = new WriteableBitmap(sensor.ColorStream.FrameWidth, sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
             Display.Source = colorBitmap;
@@ -66,13 +73,15 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     if (colorFrame != null)
                     {
                         // Copy the pixel data from the image to a temporary array
+                        //colorFrame.CopyPixelDataTo(rawColorPixels);
+                        //ConvertBayerToRgb32(colorFrame.Width, colorFrame.Height, rawColorPixels, colorPixels);
                         colorFrame.CopyPixelDataTo(colorPixels);
 
                         // Write the pixel data into our bitmap
                         colorBitmap.WritePixels(
                             new Int32Rect(0, 0, colorBitmap.PixelWidth, colorBitmap.PixelHeight),
                             colorPixels,
-                            colorBitmap.PixelWidth * colorFrame.BytesPerPixel,
+                            colorBitmap.PixelWidth * sizeof(int),
                             0);
                         lock (bitmapLock)
                         {
@@ -88,6 +97,49 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             };
             sensor.Start();
             sensor.ElevationAngle = 0;
+        }
+
+        private void ConvertBayerToRgb32(int width, int height, byte[] rawColorPixels, byte[] colorPixels)
+        {
+            // Demosaic using a basic nearest-neighbor algorithm, operating on groups of four pixels.
+            for (int y = 0; y < height; y += 2)
+            {
+                for (int x = 0; x < width; x += 2)
+                {
+                    int firstRowOffset = (y * width) + x;
+                    int secondRowOffset = firstRowOffset + width;
+
+                    // Cache the Bayer component values.
+                    byte red = rawColorPixels[firstRowOffset + 1];
+                    byte green1 = rawColorPixels[firstRowOffset];
+                    byte green2 = rawColorPixels[secondRowOffset + 1];
+                    byte blue = rawColorPixels[secondRowOffset];
+
+                    // Adjust offsets for RGB.
+                    firstRowOffset *= 4;
+                    secondRowOffset *= 4;
+
+                    // Top left
+                    colorPixels[firstRowOffset] = blue;
+                    colorPixels[firstRowOffset + 1] = green1;
+                    colorPixels[firstRowOffset + 2] = red;
+
+                    // Top right
+                    colorPixels[firstRowOffset + 4] = blue;
+                    colorPixels[firstRowOffset + 5] = green1;
+                    colorPixels[firstRowOffset + 6] = red;
+
+                    // Bottom left
+                    colorPixels[secondRowOffset] = blue;
+                    colorPixels[secondRowOffset + 1] = green2;
+                    colorPixels[secondRowOffset + 2] = red;
+
+                    // Bottom right
+                    colorPixels[secondRowOffset + 4] = blue;
+                    colorPixels[secondRowOffset + 5] = green2;
+                    colorPixels[secondRowOffset + 6] = red;
+                }
+            }
         }
 
         static System.Drawing.Size CameraPatternSize = new System.Drawing.Size(7, 4);
@@ -343,12 +395,16 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         private void ResetProjButton_Click(object sender, RoutedEventArgs e)
         {
-            projector.Reset();
+            interpFeed = slwindow.Interpret(out transformPoints, () =>
+            {
+
+            });
         }
 
         private void StepProjButton_Click(object sender, RoutedEventArgs e)
         {
-            projector.Update();
+            //projector.Update();
+            interpFeed(bitmap);
         }
 
         private void TakeProjPic()
