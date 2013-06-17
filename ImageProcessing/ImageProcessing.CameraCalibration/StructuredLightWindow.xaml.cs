@@ -83,6 +83,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         private void Draw()
         {
+            DrawPhased(currentStep++ - 1, rows);
+            if (currentStep > 2)
+            {
+                currentStep = 0;
+                rows = !rows;
+            }
+            return;
             Draw(currentStep++);
             if (Math.Ceiling(Math.Log(this.ActualWidth, 2)) < currentStep)
             {
@@ -121,6 +128,29 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     }
                 }
             }
+        }
+
+        private void DrawPhased(int step, bool row, double tlength = 2 * Math.PI, double phaseStep = Math.PI * 2 / 3)
+        {
+            WriteableBitmap wbitmap = new WriteableBitmap((int)this.ActualWidth, (int)this.ActualHeight, 96.0, 96.0, PixelFormats.Bgr32, null);
+            DisplayPhase.Source = wbitmap;
+            Display.Visibility = System.Windows.Visibility.Hidden;
+            var colorPixels = new byte[wbitmap.PixelWidth * wbitmap.PixelHeight * sizeof(int)];
+            for (var y = 0; y < wbitmap.PixelHeight; y++)
+            {
+                for (var x = 0; x < wbitmap.PixelWidth; x++)
+                {
+                    double dt = row ? (double)x / wbitmap.PixelWidth : (double)y / wbitmap.PixelHeight;
+                    double theta = dt * tlength;
+                    var res = (byte)((Math.Cos(theta + step * phaseStep) * 0.25 + 0.5) * 255);
+                    int idx = (x + y * wbitmap.PixelWidth) * 4;
+                    colorPixels[idx + 0] = res;
+                    colorPixels[idx + 1] = res;
+                    colorPixels[idx + 2] = res;
+                    colorPixels[idx + 3] = 255;
+                }
+            }
+            wbitmap.WritePixels(new Int32Rect(0, 0, wbitmap.PixelWidth, wbitmap.PixelHeight), colorPixels, wbitmap.PixelWidth * sizeof(int), 0);
         }
 
         private IEnumerable<double> GetBinarySteps(int count, double rangeStart = 0, double rangeEnd = 1.0)

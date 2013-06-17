@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="StructuredLightWindow" Height="300" Width="300" KeyDown="Window_KeyDown">
-    <Grid Name="DisplayGrid" Width="Auto" Height="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <Image Name="Display" Loaded="Display_Loaded" Stretch="None"/>
+    <Grid Name="DisplayGrid" Width="Auto" Height="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Loaded="Display_Loaded">
+        <Image Name="Display" Stretch="None"/>
+        <Image Name="DisplayPhase" Stretch="None"/>
     </Grid>
 </Window>
