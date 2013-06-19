@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageProcessing.Util", "Ima
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CalibrationTests", "CalibrationTests\CalibrationTests.csproj", "{8B08AA83-87CF-4BB4-A100-F1DA3E36B59F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graphics", "Graphics\Graphics.csproj", "{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -79,6 +81,10 @@ Global
 		{8B08AA83-87CF-4BB4-A100-F1DA3E36B59F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8B08AA83-87CF-4BB4-A100-F1DA3E36B59F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8B08AA83-87CF-4BB4-A100-F1DA3E36B59F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

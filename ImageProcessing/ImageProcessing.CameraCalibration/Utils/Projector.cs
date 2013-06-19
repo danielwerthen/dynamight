@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Graphics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -12,8 +13,49 @@ using System.Windows.Media.Imaging;
 
 namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
-
     public class Projector
+    {
+        Scanline renderer;
+        public Projector()
+        {
+            renderer = Scanline.Make();
+
+        }
+
+        public void DrawBackground()
+        {
+            DrawBackground(Colors.Black);
+        }
+
+        public void DrawBackground(Color color)
+        {
+            if (color == Colors.White)
+            {
+                renderer.RenderWhite();
+            }
+            else
+                DrawScanLine(-1, 1, true);
+        }
+
+        public void DrawScanLine(int Step, int Length, bool Rows)
+        {
+            renderer.Set(Step, Length, Rows);
+            renderer.RenderFrame();
+        }
+
+        public void DrawPoints(System.Drawing.PointF[] points, float size)
+        {
+            renderer.RenderPoints(points, size);
+        }
+
+        public System.Drawing.Size Size
+        {
+            get { return renderer.Size; }
+        }
+    }
+
+    [Obsolete]
+    public class Projector2
     {
         byte[] colorPixels;
         WriteableBitmap bitmap;
@@ -24,9 +66,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         internal static extern void MoveWindow(IntPtr hwnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 
         Window window;
-        public Projector(int? screenIndex = null)
+        public Projector2(int? screenIndex = null)
         {
-            var screen = screenIndex.HasValue ?  Screen.AllScreens[screenIndex.Value] : Screen.AllScreens.First(row => !row.Primary);
+            var screen = screenIndex.HasValue ?  Screen.AllScreens[screenIndex.Value] : Screen.AllScreens.Where(row => !row.Primary).Skip(0).First();
             window = new Window();
             window.WindowState = WindowState.Maximized;
             window.WindowStyle = WindowStyle.None;
@@ -75,10 +117,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             {
                 for (var x = 0; x < bitmap.PixelWidth; x++)
                 {
-                    byte intensity = (horizontal ? step * width > y && (step + 1) * width < y : step * width > y && (step + 1) * width < y) ? (byte)255 : (byte)0;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 0] = intensity;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 1] = intensity;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 2] = intensity;
+                    //byte intensity = (horizontal ? step * width < y && (step + 1) * width > y : step * width < x && (step + 1) * width > x) ? (byte)255 : (byte)0;
+                    byte intensity = (step * width < x && (step + 1) * width > x) ? (byte)255 : (byte)0;
+                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 0] = intensity;
+                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 1] = intensity;
+                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 2] = intensity;
                 }
             }
             bitmap.WritePixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), colorPixels, bitmap.PixelWidth * 3, 0);

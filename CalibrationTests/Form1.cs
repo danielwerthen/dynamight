@@ -18,8 +18,10 @@ namespace CalibrationTests
         public Form1()
         {
             InitializeComponent();
-            Camera camera = new Camera(KinectSensor.KinectSensors.First(), ColorImageFormat.RgbResolution1280x960Fps12);
             Projector proj = new Projector();
+            //proj.DrawPoints((new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }).Select(row => new PointF(row * 10, row * 10)).ToArray(), 10);
+            //proj.DrawPoints(new PointF[] { new PointF(50f, 50f) }, 10);
+            Camera camera = new Camera(KinectSensor.KinectSensors.First(), ColorImageFormat.RgbResolution1280x960Fps12);
             bool res = false;
             Application.Idle += (o, e) =>
             {
@@ -27,6 +29,8 @@ namespace CalibrationTests
                     return;
                 Bitmap map;
                 res = DualCalibrator.DrawCorners(proj, camera, out map);
+                //DualCalibrator.DrawNoFull(proj, camera, out map);
+                //res = true;
                 pictureBox1.Image = map;
             };
         }

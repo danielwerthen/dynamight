@@ -7,16 +7,33 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Emgu.CV.Structure;
+using Emgu.CV;
 
 namespace Dynamight.ImageProcessing.CameraCalibration
 {
     public class DualCalibrator
     {
+        public static void DrawNoFull(Projector proj, Camera camera, out Bitmap result)
+        {
+            var range = new int[10];
+            proj.DrawBackground(System.Windows.Media.Colors.Black);
+            var nolight = range.Select(r => new Image<Gray, byte>(camera.TakePicture())).Last();
+            proj.DrawBackground(System.Windows.Media.Colors.White);
+            var fulllight = range.Select(r => new Image<Gray, byte>(camera.TakePicture())).Last();
+            result = (fulllight - nolight).Bitmap;
+        }
+
         public static bool DrawCorners(Projector projector, Camera camera, out Bitmap nolight)
         {
             projector.DrawBackground(System.Windows.Media.Colors.Black);
-            nolight = camera.TakePicture();
-            PointF[] cameraCorners = DetectCorners(nolight, new Size(7,4));
+            PointF[] cameraCorners;
+            do
+            {
+                Thread.Sleep(500);
+                nolight = camera.TakePicture();
+                cameraCorners = DetectCorners(nolight, new Size(7, 4));
+            } while (cameraCorners == null);
             int pointSize = 5;
             if (cameraCorners == null)
             {
@@ -48,7 +65,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 }
             }
             var projCorners = DetectRoughCorners(cameraCorners, projector, camera);
-            projector.DrawPoints(projCorners, 5);
+            projector.DrawPoints(projCorners, 10);
             return true;
         }
 
@@ -106,30 +123,50 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         public static PointF[] DetectRoughCorners(PointF[] cornersToInclude, Projector projector, Camera camera)
         {
+            projector.DrawBackground(System.Windows.Media.Colors.Black);
+            var nolight = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+            projector.DrawBackground(System.Windows.Media.Colors.White);
+            var fullLight = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(camera.TakePicture());
             int linewidth = 10;
-            List<Bitmap> maps = new List<Bitmap>();
-            List<Bitmap> mapsv = new List<Bitmap>();
+            List<double[]> rowIntensities = new List<double[]>();
+            List<double[]> colIntensities = new List<double[]>();
             for (var steps = 0; steps < (double)projector.Size.Height / (double)linewidth; steps++)
             {
                 projector.DrawScanLine(steps, linewidth, true);
-                maps.Add(camera.TakePicture());
+                var pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                rowIntensities.Add(cornersToInclude.Select(corner => pic[(int)corner.X, (int)corner.Y].Intensity - nolight[(int)corner.X, (int)corner.Y].Intensity).ToArray());
+                pic.Dispose();
             }
             for (var steps = 0; steps < (double)projector.Size.Width / (double)linewidth; steps++)
             {
                 projector.DrawScanLine(steps, linewidth, false);
-                mapsv.Add(camera.TakePicture());
+                var pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                colIntensities.Add(cornersToInclude.Select(corner => pic[(int)corner.X, (int)corner.Y].Intensity).ToArray());
+                pic.Dispose();
             }
-            var imgs = maps.Select(map => new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(map)).ToArray();
-            var imgsv = mapsv.Select(map => new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(map)).ToArray();
-            return cornersToInclude.Select(corner =>
-                {
-                    int idx = 0;
-                    var maxh = imgs.Select(img => new { index = idx++, intenisty = img[(int)corner.Y, (int)corner.X].Intensity }).OrderByDescending(row => row.intenisty).Select(row => row.index).First();
-                    idx = 0;
-                    var maxv = imgsv.Select(img => new { index = idx++, intenisty = img[(int)corner.Y, (int)corner.X].Intensity }).OrderByDescending(row => row.intenisty).Select(row => row.index).First();
-                    return new PointF(maxh * linewidth, maxv * linewidth);
-                }).ToArray();
-            //return new PointF[] { new PointF(0, 0), new PointF(projector.Size.Width, 0), new PointF(projector.Size.Width, projector.Size.Height), new PointF(0, projector.Size.Height) };
+            PointF[] result = new PointF[cornersToInclude.Length];
+            var test = rowIntensities.Select(row => row[0]).ToArray();
+            var order = test.OrderByDescending(row => row).ToArray();
+            var max = order.First();
+            for (var i = 0; i < result.Length; i++)
+            {
+                int idx = 0;
+                var x = rowIntensities.Select(row => new { intensity = row[i], index = idx++ }).OrderByDescending(row => row.intensity).Select(row => row.index).First() * linewidth;
+                idx = 0;
+                var y = colIntensities.Select(row => new { intensity = row[i], index = idx++ }).OrderByDescending(row => row.intensity).Select(row => row.index).First() * linewidth;
+                result[i] = new PointF(x, y);
+            }
+            return result;
         }
 
         public static PointF[] DetectProjectorCorners(Bitmap nolight, PointF[] cameraCorners, PointF[] outline, Projector projector, Camera camera)
