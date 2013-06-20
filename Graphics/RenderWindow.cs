@@ -95,7 +95,7 @@ namespace Graphics
             PropertyInfo pi = (inf.GetType()).GetProperty("WindowHandle");
             IntPtr hnd = ((IntPtr)pi.GetValue(ii, null));
             var id = GetForegroundWindow();
-            SetWindowPos(id, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, display.Bounds.Left - 500,
+            SetWindowPos(id, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, display.Bounds.Left,
              display.Bounds.Top, display.Bounds.Width, display.Bounds.Height,
              SetWindowPosFlags.SWP_SHOWWINDOW);
             this.WindowState = WindowState.Fullscreen;

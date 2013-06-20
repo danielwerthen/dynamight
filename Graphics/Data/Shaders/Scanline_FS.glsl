@@ -4,6 +4,7 @@ uniform int HEIGHT;
 uniform int STEP;
 uniform int LENGTH;
 uniform int ROWS;
+uniform vec4 COLOR;
 
 // Shader entry point, this is executed per Pixel
 void main(void)
@@ -12,7 +13,7 @@ if (ROWS == 0)
 {
   if (gl_FragCoord.x > float(STEP * LENGTH) && gl_FragCoord.x < float((STEP + 1) * LENGTH))
   {
-    gl_FragColor = vec4 (0.0,1,0,0.5);
+    gl_FragColor = COLOR;
   }
   else
   {
@@ -23,7 +24,7 @@ else
 {
   if (gl_FragCoord.y > float(STEP * LENGTH) && gl_FragCoord.y < float((STEP + 1) * LENGTH))
   {
-    gl_FragColor = vec4 (0.0,1,0,0.5);
+    gl_FragColor = COLOR;
   }
   else
   {

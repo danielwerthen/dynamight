@@ -46,6 +46,9 @@
     <Compile Include="Scanline.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Data\Shaders\Texture_FS.glsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Data\Shaders\Points_FS.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

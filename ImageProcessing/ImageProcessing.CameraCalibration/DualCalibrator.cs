@@ -134,10 +134,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             {
                 projector.DrawScanLine(steps, linewidth, true);
                 var pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic.Dispose();
                 pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic.Dispose();
                 pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
                 rowIntensities.Add(cornersToInclude.Select(corner => pic[(int)corner.X, (int)corner.Y].Intensity - nolight[(int)corner.X, (int)corner.Y].Intensity).ToArray());
                 pic.Dispose();
@@ -146,10 +145,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             {
                 projector.DrawScanLine(steps, linewidth, false);
                 var pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic.Dispose();
                 pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
-                pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
+                pic.Dispose();
                 pic = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(camera.TakePicture());
                 colIntensities.Add(cornersToInclude.Select(corner => pic[(int)corner.X, (int)corner.Y].Intensity).ToArray());
                 pic.Dispose();

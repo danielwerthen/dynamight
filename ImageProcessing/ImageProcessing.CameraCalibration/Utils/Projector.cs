@@ -29,23 +29,23 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
         public void DrawBackground(Color color)
         {
-            if (color == Colors.White)
-            {
-                renderer.RenderWhite();
-            }
-            else
-                DrawScanLine(-1, 1, true);
+            renderer.Fill(new OpenTK.Graphics.Color4(color.R, color.G, color.B, color.A));
         }
 
         public void DrawScanLine(int Step, int Length, bool Rows)
         {
-            renderer.Set(Step, Length, Rows);
-            renderer.RenderFrame();
+            renderer.RenderScanline(Step, Length, Rows, OpenTK.Graphics.Color4.White);
         }
 
         public void DrawPoints(System.Drawing.PointF[] points, float size)
         {
-            renderer.RenderPoints(points, size);
+            Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> img = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(new System.Drawing.Size(renderer.Size.Width, renderer.Size.Height));
+            foreach (var p in points)
+            {
+                img.Draw(new Emgu.CV.Structure.CircleF(p, 10), new Emgu.CV.Structure.Bgr(System.Drawing.Color.White), 0);
+            }
+            renderer.RenderBitmap(img.Bitmap);
+            img.Dispose();
         }
 
         public System.Drawing.Size Size

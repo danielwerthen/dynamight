@@ -5,6 +5,8 @@ using OpenTK.Input;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -22,7 +24,7 @@ namespace Graphics
 
         }
 
-        int VertexShaderObject, FragmentShaderObject, ProgramObject;
+        int VertexShaderObject, FragmentShaderObject, TextureFragmentShaderObject, TextureProgramObject, ProgramObject, TextureObject;
         int PointVertexShaderObject, PointFragmentShaderObject, PointProgramObject;
         int Step;
         int Length = 10;
@@ -55,15 +57,33 @@ namespace Graphics
             if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
                 throw new Exception(LogInfo);
 
+            using (StreamReader sr = new StreamReader("Data/Shaders/Texture_FS.glsl"))
+            {
+                TextureFragmentShaderObject = GL.CreateShader(ShaderType.FragmentShader);
+                GL.ShaderSource(TextureFragmentShaderObject, sr.ReadToEnd());
+                GL.CompileShader(TextureFragmentShaderObject);
+            }
+
+            GL.GetShaderInfoLog(PointFragmentShaderObject, out LogInfo);
+            if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
+                throw new Exception(LogInfo);
+
             PointProgramObject = GL.CreateProgram();
             GL.AttachShader(PointProgramObject, PointVertexShaderObject);
             GL.AttachShader(PointProgramObject, PointFragmentShaderObject);
             GL.LinkProgram(PointProgramObject);
 
+            TextureProgramObject = GL.CreateProgram();
+            GL.AttachShader(TextureProgramObject, PointVertexShaderObject);
+            GL.AttachShader(TextureProgramObject, TextureFragmentShaderObject);
+            GL.LinkProgram(TextureProgramObject);
+
             GL.UseProgram(PointProgramObject);
+            GL.UseProgram(TextureProgramObject);
 
             GL.DeleteShader(PointVertexShaderObject);
             GL.DeleteShader(PointFragmentShaderObject);
+            GL.DeleteShader(TextureFragmentShaderObject);
         }
 
         protected override void Load()
@@ -106,6 +126,33 @@ namespace Graphics
             GL.DeleteShader(VertexShaderObject);
             GL.DeleteShader(FragmentShaderObject);
 
+            GL.ActiveTexture(TextureUnit.Texture0); // select TMU0
+            GL.GenTextures(1, out TextureObject);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)(TextureWrapMode)All.ClampToEdge);
+
+            using (Bitmap bitmap = new Bitmap(Width, Height))
+            {
+                for (int y = 0; y < Height; y++)
+                    for (int x = 0; x < Width; x++)
+                    {
+                        double ii = (double)x / (double)Width;
+                        ii = ii * 255;
+                        byte z = (byte)ii;
+                        double ii2 = (double)y / (double)Height;
+                        ii2 = ii2 * 255;
+                        byte z2 = (byte)ii2;
+                        bitmap.SetPixel(x, y, System.Drawing.Color.FromArgb(z,z2,0));
+                    }
+                BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly,
+                                                  System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb8, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgr,
+                              PixelType.UnsignedByte, data.Scan0);
+                bitmap.UnlockBits(data);
+            }
+
             LoadPoints();
         }
 
@@ -113,15 +160,47 @@ namespace Graphics
         {
             if (ProgramObject != 0)
                 GL.DeleteProgram(ProgramObject);
+            if (TextureProgramObject != 0)
+                GL.DeleteProgram(TextureProgramObject);
             if (PointProgramObject != 0)
                 GL.DeleteProgram(PointProgramObject);
+            if (TextureObject != 0)
+                GL.DeleteTextures(1, ref TextureObject);
         }
 
-        public void RenderWhite()
+        public void Fill(Color4 color)
         {
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             GL.UseProgram(PointProgramObject);
+            GL.Uniform4(GL.GetUniformLocation(PointProgramObject, "COLOR"), new Vector4(color.R, color.G, color.B, color.A));
+
+            GL.Begin(BeginMode.Quads);
+            {
+                GL.Vertex2(-1.0f, -1.0f);
+                GL.Vertex2(1.0f, -1.0f);
+                GL.Vertex2(1.0f, 1.0f);
+                GL.Vertex2(-1.0f, 1.0f);
+            }
+            GL.End();
+            SwapBuffers();
+        }
+
+        public void RenderBitmap(Bitmap bitmap)
+        {
+            BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly,
+                                                     System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb8, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgr,
+                          PixelType.UnsignedByte, data.Scan0);
+            bitmap.UnlockBits(data);
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+
+            GL.UseProgram(TextureProgramObject);
+
+            GL.Uniform1(GL.GetUniformLocation(TextureProgramObject, "COLORTABLE"), TextureObject);
+            GL.Uniform1(GL.GetUniformLocation(TextureProgramObject, "WIDTH"), Width);
+            GL.Uniform1(GL.GetUniformLocation(TextureProgramObject, "HEIGHT"), Height);
 
             GL.Begin(BeginMode.Quads);
             {
@@ -138,6 +217,7 @@ namespace Graphics
         {
             GL.Clear(ClearBufferMask.ColorBufferBit);
             GL.UseProgram(PointProgramObject);
+            GL.Uniform4(GL.GetUniformLocation(PointProgramObject, "COLOR"), new Vector4(1, 1, 1, 1));
 
             GL.Begin(BeginMode.Quads);
             {
@@ -158,6 +238,30 @@ namespace Graphics
             SwapBuffers();
         }
 
+        public void RenderScanline(int Step, int Length, bool Rows, Color4 color)
+        {
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+
+            GL.UseProgram(ProgramObject);
+
+            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "WIDTH"), Width);
+            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "HEIGHT"), Height);
+            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "STEP"), Step);
+            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "LENGTH"), Length);
+            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "ROWS"), Rows ? 1 : 0);
+            GL.Uniform4(GL.GetUniformLocation(ProgramObject, "COLOR"), new Vector4(color.R, color.G, color.B, color.A));
+
+            GL.Begin(BeginMode.Quads);
+            {
+                GL.Vertex2(-1.0f, -1.0f);
+                GL.Vertex2(1.0f, -1.0f);
+                GL.Vertex2(1.0f, 1.0f);
+                GL.Vertex2(-1.0f, 1.0f);
+            }
+            GL.End();
+            SwapBuffers(); 
+        }
+
         public override void RenderFrame()
         {
             GL.Clear(ClearBufferMask.ColorBufferBit);
@@ -169,6 +273,7 @@ namespace Graphics
             GL.Uniform1(GL.GetUniformLocation(ProgramObject, "STEP"), Step);
             GL.Uniform1(GL.GetUniformLocation(ProgramObject, "LENGTH"), Length);
             GL.Uniform1(GL.GetUniformLocation(ProgramObject, "ROWS"), Rows ? 1 : 0);
+            GL.Uniform4(GL.GetUniformLocation(ProgramObject, "COLOR"), new Vector4(1,1,1,1));
 
             GL.Begin(BeginMode.Quads);
             {
