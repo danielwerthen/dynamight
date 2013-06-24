@@ -12,23 +12,18 @@ using System.Threading.Tasks;
 
 namespace Graphics
 {
-    public class BitmapWindow : RenderWindow
-    {
-
-        private BitmapWindow(int width, int height, DisplayDevice device) 
-            : base(width, height, device)
-        {
-
-        }
-
-        int VertexShaderObject, FragmentShaderObject, ProgramObject, TextureObject;
-
-        const string VERTEXSHADER = 
+	public class BitmapWindow : GraphicsWindow
+	{
+		public BitmapWindow(int x, int y, int width, int height, DisplayDevice device = null)
+			: base(x, y, width, height, device == null ? DisplayDevice.AvailableDisplays.First() : device)
+		{
+		}
+		const string VERTEXSHADER =
 @"void main(void)
 {
   gl_Position = ftransform(); // gl_ModelViewProjectionMatrix * gl_Vertex;
 }";
-        const string FRAGMENTSHADER =
+		const string FRAGMENTSHADER =
 @"
 uniform sampler2D COLORTABLE;
 uniform int WIDTH;
@@ -39,130 +34,61 @@ void main(void)
   gl_FragColor = texture2D( COLORTABLE, vec2(gl_FragCoord.x / float(WIDTH),gl_FragCoord.y / float(HEIGHT)));
 }
 ";
+		int texture, program;
+		TextureUnit unit = TextureUnit.Texture0;
+		public override void Load()
+		{
+			MakeCurrent();
+			GL.Disable(EnableCap.Dither);
+			GL.Enable(EnableCap.Texture2D);
+			GL.ClearColor(System.Drawing.Color.Black);
+			var vs = CreateShader(ShaderType.VertexShader, VERTEXSHADER);
+			var fs = CreateShader(ShaderType.FragmentShader, FRAGMENTSHADER);
+			program = CreateProgram(vs, fs);
+			GL.DeleteShader(vs);
+			GL.DeleteShader(fs);
+			texture = LoadTexture(new System.Drawing.Bitmap(Width, Height), unit);
+		}
 
-        public override void Load()
-        {
-            MakeCurrent();
-            base.Load();
+		public void LoadBitmap(Bitmap bitmap)
+		{
+			UpdateTexture(bitmap, texture);
+		}
 
-            GL.Disable(EnableCap.Dither);
-            GL.Enable(EnableCap.Texture2D);
-            GL.ClearColor(System.Drawing.Color.Black);
+		public override void RenderFrame()
+		{
+			MakeCurrent();
+			GL.Clear(ClearBufferMask.ColorBufferBit);
 
-            //VertexShaderObject = GL.CreateShader(ShaderType.VertexShader);
-            //GL.ShaderSource(VertexShaderObject, VERTEXSHADER);
-            //GL.CompileShader(VertexShaderObject);
+			GL.BindTexture(TextureTarget.Texture2D, texture);
+			GL.UseProgram(program);
 
-            //string LogInfo;
-            //GL.GetShaderInfoLog(VertexShaderObject, out LogInfo);
-            //if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
-            //    throw new Exception(LogInfo);
+			GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
+			GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), Width);
+			GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), Height);
 
-            //FragmentShaderObject = GL.CreateShader(ShaderType.FragmentShader);
-            //GL.ShaderSource(FragmentShaderObject, FRAGMENTSHADER);
-            //GL.CompileShader(FragmentShaderObject);
+			GL.Begin(BeginMode.Quads);
 
-            //GL.GetShaderInfoLog(FragmentShaderObject, out LogInfo);
-            //if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
-            //    throw new Exception(LogInfo);
+			GL.TexCoord2(0.0f, 1.0f);
+			GL.Vertex2(-1.0f, -1.0f);
+			GL.TexCoord2(1.0f, 1.0f);
+			GL.Vertex2(1.0f, -1.0f);
+			GL.TexCoord2(1.0f, 0.0f);
+			GL.Vertex2(1.0f, 1.0f);
+			GL.TexCoord2(0.0f, 0.0f);
+			GL.Vertex2(-1.0f, 1.0f);
 
-            //ProgramObject = GL.CreateProgram();
-            //GL.AttachShader(ProgramObject, VertexShaderObject);
-            //GL.AttachShader(ProgramObject, FragmentShaderObject);
-            //GL.LinkProgram(ProgramObject);
+			GL.End();
 
-            //GL.UseProgram(ProgramObject);
-
-            //GL.DeleteShader(VertexShaderObject);
-            //GL.DeleteShader(FragmentShaderObject);
-
-            using (Bitmap bitmap = new Bitmap(Width, Height))
-            {
-                for (int y = 0; y < Height; y++)
-                    for (int x = 0; x < Width; x++)
-                    {
-                        double ii = (double)x / (double)Width;
-                        ii = ii * 255;
-                        byte z = (byte)ii;
-                        double ii2 = (double)y / (double)Height;
-                        ii2 = ii2 * 255;
-                        byte z2 = (byte)ii2;
-                        bitmap.SetPixel(x, y, System.Drawing.Color.FromArgb(z, z2, 0));
-                    }
-                TextureObject = LoadTexture(bitmap);
-            }
-        }
-
-        public override void Unload()
-        {
-            MakeCurrent();
-            if (ProgramObject != 0)
-                GL.DeleteProgram(ProgramObject);
-            if (TextureObject != 0)
-                GL.DeleteTextures(1, ref TextureObject);
-        }
-
-        public void LoadBitmap(Bitmap bitmap)
-        {
-            MakeCurrent();
-            UpdateTexture(bitmap, TextureObject);
-        }
-
-        public override void RenderFrame()
-        {
-            MakeCurrent();
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-
-            GL.BindTexture(TextureTarget.Texture2D, TextureObject);
-
-            GL.Begin(BeginMode.Quads);
-
-            GL.TexCoord2(0.0f, 1.0f);
-            GL.Vertex2(-1.0f, -1.0f);
-            GL.TexCoord2(1.0f, 1.0f);
-            GL.Vertex2(1.0f, -1.0f);
-            GL.TexCoord2(1.0f, 0.0f);
-            GL.Vertex2(1.0f, 1.0f);
-            GL.TexCoord2(0.0f, 0.0f);
-            GL.Vertex2(-1.0f, 1.0f);
-
-            GL.End();
-
-            SwapBuffers();
-        }
-
-        public void RenderFrame2()
-        {
-            MakeCurrent();
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-
-            GL.UseProgram(ProgramObject);
-
-            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "COLORTABLE"), TextureObject);
-            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "WIDTH"), Width);
-            GL.Uniform1(GL.GetUniformLocation(ProgramObject, "HEIGHT"), Height);
-
-            GL.Begin(BeginMode.Quads);
-            {
-                GL.Vertex2(-1.0f, -1.0f);
-                GL.Vertex2(1.0f, -1.0f);
-                GL.Vertex2(1.0f, 1.0f);
-                GL.Vertex2(-1.0f, 1.0f);
-            }
-            GL.End();
-            SwapBuffers();
-        }
-
-        public static BitmapWindow Make()
-        {
-            var display = DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
-            var secondary = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
-            //var sc = new Scanline(display.Width, display.Height, display);
-            var window = new BitmapWindow(secondary.Width / 2, secondary.Height / 2, display);
-            window.Visible = true;
-            window.Load();
-            window.ResizeGraphics();
-            return window;
-        }
-    }
+			SwapBuffers();
+		}
+		public override void Unload()
+		{
+			MakeCurrent();
+			if (program != 0)
+				GL.DeleteProgram(program);
+			if (texture != 0)
+				GL.DeleteTexture(texture);
+		}
+	}
 }

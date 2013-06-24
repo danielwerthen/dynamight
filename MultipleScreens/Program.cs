@@ -1,49 +1,60 @@
-﻿using OpenTK;
+﻿using Graphics;
+using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MultipleScreens
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            DisplayDevice device1 = DisplayDevice.AvailableDisplays.First();
-            DisplayDevice device2 = DisplayDevice.AvailableDisplays.Skip(1).First();
-            Action<NativeWindow> activate = (window) =>
-                {
-                    window.Visible = true;
-                };
-            NativeWindow window1 = new NativeWindow(500, 500, "Window1", GameWindowFlags.Default, GraphicsMode.Default, device1);
-            NativeWindow window2 = new NativeWindow(500, 500, "Window2", GameWindowFlags.Default, GraphicsMode.Default, device2);
-            activate(window1);
-            activate(window2);
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			BitmapWindow b1 = new BitmapWindow(50, 50, 500, 500);
+			b1.Load();
+			b1.ResizeGraphics();
+			using (var bitmap = new Bitmap(b1.Width, b1.Height))
+			{
+				b1.LoadBitmap(bitmap);
+				b1.RenderFrame();
+				List<double> times = new List<double>();
+				for (var i = 0; i < 50; i++)
+				{
+					DateTime t0 = DateTime.Now;
+					QuickDraw.Start(bitmap).Color(Color.White)
+						.Fill(Color.Black)
+						.DrawShape(new System.Windows.Media.RectangleGeometry(new System.Windows.Rect(i * 10 , 0, 10, bitmap.Height)))
+						.Finish();
+					times.Add((DateTime.Now - t0).TotalMilliseconds);
+					b1.LoadBitmap(bitmap);
+					b1.RenderFrame();
+				}
+				var avg = times.Average();
+				Console.ReadLine();
+			}
+		}
 
-            var context1 = new GraphicsContext(GraphicsMode.Default, window1.WindowInfo, 2, 0, GraphicsContextFlags.Default);
-            context1.MakeCurrent(window1.WindowInfo);
-            context1.LoadAll();
-            GL.Disable(EnableCap.Dither);
-            GL.ClearColor(System.Drawing.Color.Red);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            context1.SwapBuffers();
-            var context2 = new GraphicsContext(GraphicsMode.Default, window2.WindowInfo, 2, 0, GraphicsContextFlags.Default);
-            context2.MakeCurrent(window2.WindowInfo);
-            context2.LoadAll();
-            GL.Disable(EnableCap.Dither);
-            GL.ClearColor(System.Drawing.Color.Blue);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            context2.SwapBuffers();
+		static Bitmap MakeBitm(int Width, int Height, double max = 1)
+		{
+			Bitmap bitmap = new Bitmap(Width, Height);
+			{
+				for (int y = 0; y < Height; y++)
+					for (int x = 0; x < Width; x++)
+					{
+						double ii = (double)x / (double)Width;
+						ii = ii * 255 * max;
+						byte z = (byte)ii;
+						bitmap.SetPixel(x, y, System.Drawing.Color.FromArgb(z, z, z));
+					}
+			}
+			return bitmap;
+		}
+	}
 
-            GL.Disable(EnableCap.Dither);
-            GL.ClearColor(System.Drawing.Color.Yellow);
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            context1.SwapBuffers();
-            Console.ReadLine();
-        }
-    }
 }

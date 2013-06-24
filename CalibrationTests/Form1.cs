@@ -21,7 +21,7 @@ namespace CalibrationTests
         public Form1()
         {
             InitializeComponent();
-            BitmapWindow window = BitmapWindow.Make();
+						var window = new BitmapWindow(500, 50, 500, 500);
             Projector proj = new Projector();
             Camera camera = new Camera(KinectSensor.KinectSensors.First(row => row.Status == KinectStatus.Connected), ColorImageFormat.RgbResolution640x480Fps30);
 
