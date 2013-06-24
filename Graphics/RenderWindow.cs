@@ -4,6 +4,8 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Platform;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -15,12 +17,13 @@ namespace Graphics
     public class RenderWindow : NativeWindow
     {
         private GraphicsContext glContext;
+
         public RenderWindow(int width, int height, DisplayDevice device) 
             : base(width, height, "RenderOutput", GameWindowFlags.Default, GraphicsMode.Default, device == null ? DisplayDevice.AvailableDisplays.FirstOrDefault(row => row.IsPrimary) : device)
         {
             try
             {
-                glContext = new GraphicsContext(GraphicsMode.Default , WindowInfo, 2, 0, GraphicsContextFlags.Default);
+                glContext = new GraphicsContext(GraphicsMode.Default, WindowInfo, 2, 0, GraphicsContextFlags.Default);
                 glContext.MakeCurrent(WindowInfo);
                 (glContext as IGraphicsContextInternal).LoadAll();
 
@@ -39,18 +42,23 @@ namespace Graphics
             get { return new System.Drawing.Size(Width, Height); }
         }
 
+        protected void MakeCurrent()
+        {
+            glContext.MakeCurrent(WindowInfo);
+        }
 
-        protected virtual void Load()
+        public virtual void Load()
         {
         }
 
-        protected virtual void Unload()
+        public virtual void Unload()
         {
 
         }
 
-        protected virtual void ResizeGraphics()
+        public virtual void ResizeGraphics()
         {
+            MakeCurrent();
             GL.Viewport(0, 0, Width, Height);
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadIdentity();
@@ -65,6 +73,7 @@ namespace Graphics
 
         protected void SwapBuffers()
         {
+            MakeCurrent();
             EnsureUndisposed();
             glContext.SwapBuffers();
         }
@@ -86,7 +95,7 @@ namespace Graphics
             GC.SuppressFinalize(this);
         }
 
-        public virtual void Open(DisplayDevice display)
+        public virtual void Fullscreen(DisplayDevice display)
         {
             this.Visible = true;
             this.WindowBorder = WindowBorder.Hidden;
@@ -101,6 +110,42 @@ namespace Graphics
             this.WindowState = WindowState.Fullscreen;
             this.Load();
             this.ResizeGraphics();
+        }
+
+        public static int LoadTexture(Bitmap bitmap)
+        {
+            int texture;
+            GL.GenTextures(1, out texture);
+            GL.BindTexture(TextureTarget.Texture2D, texture);
+
+            BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0,
+                OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+
+            bitmap.UnlockBits(data);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            return texture;
+        }
+
+
+        public static void UpdateTexture(Bitmap bitmap, int texture)
+        {
+            TextureTarget Target = TextureTarget.Texture2D;
+
+            GL.BindTexture(Target, texture);
+
+            BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            GL.TexImage2D(Target, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+            GL.Finish();
+            bitmap.UnlockBits(data);
+
+            if (GL.GetError() != ErrorCode.NoError)
+                throw new Exception("Error loading texture " + "bitmap");
+
         }
 
 #region DllImports

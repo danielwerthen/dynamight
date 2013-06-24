@@ -15,10 +15,10 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
     public class Projector
     {
-        Scanline renderer;
+        public Scanline Renderer;
         public Projector()
         {
-            renderer = Scanline.Make();
+            Renderer = Scanline.Make();
 
         }
 
@@ -29,28 +29,28 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
         public void DrawBackground(Color color)
         {
-            renderer.Fill(new OpenTK.Graphics.Color4(color.R, color.G, color.B, color.A));
+            Renderer.Fill(new OpenTK.Graphics.Color4(color.R, color.G, color.B, color.A));
         }
 
         public void DrawScanLine(int Step, int Length, bool Rows)
         {
-            renderer.RenderScanline(Step, Length, Rows, OpenTK.Graphics.Color4.White);
+            Renderer.RenderScanline(Step, Length, Rows, OpenTK.Graphics.Color4.White);
         }
 
         public void DrawPoints(System.Drawing.PointF[] points, float size)
         {
-            Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> img = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(new System.Drawing.Size(renderer.Size.Width, renderer.Size.Height));
+            Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> img = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(new System.Drawing.Size(Renderer.Size.Width, Renderer.Size.Height));
             foreach (var p in points)
             {
                 img.Draw(new Emgu.CV.Structure.CircleF(p, 10), new Emgu.CV.Structure.Bgr(System.Drawing.Color.White), 0);
             }
-            renderer.RenderBitmap(img.Bitmap);
+            Renderer.RenderBitmap(img.Bitmap);
             img.Dispose();
         }
 
         public System.Drawing.Size Size
         {
-            get { return renderer.Size; }
+            get { return Renderer.Size; }
         }
     }
 

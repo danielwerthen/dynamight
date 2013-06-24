@@ -86,8 +86,10 @@ namespace Graphics
             GL.DeleteShader(TextureFragmentShaderObject);
         }
 
-        protected override void Load()
+        public override void Load()
         {
+            MakeCurrent();
+            
             //this.VSync = VSyncMode.On;
 
             GL.Disable(EnableCap.Dither);
@@ -147,7 +149,8 @@ namespace Graphics
                     }
                 BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly,
                                                   System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                
+
+                GL.BindTexture(TextureTarget.Texture2D, TextureObject);
                 GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb8, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgr,
                               PixelType.UnsignedByte, data.Scan0);
                 bitmap.UnlockBits(data);
@@ -156,8 +159,9 @@ namespace Graphics
             LoadPoints();
         }
 
-        protected override void Unload()
+        public override void Unload()
         {
+            MakeCurrent();
             if (ProgramObject != 0)
                 GL.DeleteProgram(ProgramObject);
             if (TextureProgramObject != 0)
@@ -170,6 +174,7 @@ namespace Graphics
 
         public void Fill(Color4 color)
         {
+            MakeCurrent();
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             GL.UseProgram(PointProgramObject);
@@ -188,9 +193,11 @@ namespace Graphics
 
         public void RenderBitmap(Bitmap bitmap)
         {
+            MakeCurrent();
             BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly,
                                                      System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
+            GL.BindTexture(TextureTarget.Texture2D, TextureObject);
             GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgb8, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgr,
                           PixelType.UnsignedByte, data.Scan0);
             bitmap.UnlockBits(data);
@@ -215,6 +222,7 @@ namespace Graphics
 
         public void RenderPoints(System.Drawing.PointF[] points, float size)
         {
+            MakeCurrent();
             GL.Clear(ClearBufferMask.ColorBufferBit);
             GL.UseProgram(PointProgramObject);
             GL.Uniform4(GL.GetUniformLocation(PointProgramObject, "COLOR"), new Vector4(1, 1, 1, 1));
@@ -240,6 +248,7 @@ namespace Graphics
 
         public void RenderScanline(int Step, int Length, bool Rows, Color4 color)
         {
+            MakeCurrent();
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             GL.UseProgram(ProgramObject);
@@ -264,6 +273,7 @@ namespace Graphics
 
         public override void RenderFrame()
         {
+            MakeCurrent();
             GL.Clear(ClearBufferMask.ColorBufferBit);
 
             GL.UseProgram(ProgramObject);
@@ -292,7 +302,7 @@ namespace Graphics
             var primary = DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             //var sc = new Scanline(display.Width, display.Height, display);
             var sc = new Scanline(display.Width, display.Height, primary);
-            sc.Open(display);
+            sc.Fullscreen(display);
             //sc.Visible = true;
             //sc.WindowBorder = WindowBorder.Hidden;
             //var id = GetForegroundWindow();

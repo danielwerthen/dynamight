@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio Express 2012 for Windows Desktop
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Networking", "Utils\Networking\Networking.csproj", "{B47D4919-21AA-409D-83C9-F1A6B5664A6C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KinectTest", "Tests\KinectTest\KinectTest.csproj", "{94EEE216-4D9F-429F-B0A2-E850D4909D13}"
@@ -26,6 +26,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CalibrationTests", "CalibrationTests\CalibrationTests.csproj", "{8B08AA83-87CF-4BB4-A100-F1DA3E36B59F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graphics", "Graphics\Graphics.csproj", "{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MultipleScreens", "MultipleScreens\MultipleScreens.csproj", "{6D3292EA-C42C-4563-96AE-834967B99A6D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,6 +87,10 @@ Global
 		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{269D3C4A-94E0-48CB-A31E-F8E3F8E27502}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D3292EA-C42C-4563-96AE-834967B99A6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D3292EA-C42C-4563-96AE-834967B99A6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D3292EA-C42C-4563-96AE-834967B99A6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D3292EA-C42C-4563-96AE-834967B99A6D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
