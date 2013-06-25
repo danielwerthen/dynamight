@@ -46,7 +46,9 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitmapProgram.cs" />
     <Compile Include="BitmapWindow.cs" />
+    <Compile Include="ProgramWindow.cs" />
     <Compile Include="QuickDraw.cs" />
     <Compile Include="FastBitmap.cs" />
     <Compile Include="GraphicsWindow.cs" />

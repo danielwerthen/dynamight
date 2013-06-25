@@ -26,7 +26,31 @@ namespace Graphics
 			glContext = new GraphicsContext(GraphicsMode.Default, WindowInfo, 2, 0, GraphicsContextFlags.Default);
 			glContext.MakeCurrent(WindowInfo);
 			(glContext as IGraphicsContextInternal).LoadAll();
+			LoadWindowHandle();
 		}
+
+		public GraphicsWindow(int width, int height, DisplayDevice display, string title = "Window")
+			: base(width, height, title, GameWindowFlags.Default, GraphicsMode.Default, display)
+		{
+			this.Visible = true;
+			this.display = display;
+			glContext = new GraphicsContext(GraphicsMode.Default, WindowInfo, 2, 0, GraphicsContextFlags.Default);
+			glContext.MakeCurrent(WindowInfo);
+			(glContext as IGraphicsContextInternal).LoadAll();
+			LoadWindowHandle();
+		}
+
+		private void LoadWindowHandle()
+		{
+			IWindowInfo ii = ((OpenTK.NativeWindow)this).WindowInfo;
+			object inf = ((OpenTK.NativeWindow)this).WindowInfo;
+			PropertyInfo parentprop = (inf.GetType()).GetProperty("Parent");
+			IWindowInfo parent = ((IWindowInfo)parentprop.GetValue(ii, null));
+			PropertyInfo pi = (inf.GetType()).GetProperty("WindowHandle");
+			WindowHandle = ((IntPtr)pi.GetValue(parent, null));
+		}
+
+		private IntPtr WindowHandle;
 
 		protected void MakeCurrent()
 		{
@@ -82,28 +106,6 @@ namespace Graphics
 			
 			return ptr;
 		}
-
-        //public void UpdateTexture(Bitmap bitmap, int texture)
-        //{
-        //    using (var org = new FastBitmap(bitmap))
-        //    {
-        //        using (var res = new Bitmap(bitmap.Width, bitmap.Height))
-        //        {
-        //            using (var fast = new FastBitmap(res))
-        //            {
-        //                for (var x = 0; x < bitmap.Width; x++)
-        //                    for (var y = 0; y < bitmap.Height; y++)
-        //                    {
-        //                        fast[x, y, 0] = org[x, y, 0];
-        //                        fast[x, y, 1] = org[x, y, 1];
-        //                        fast[x, y, 2] = org[x, y, 2];
-        //                        fast[x, y, 3] = org[x, y, 3];
-        //                    }
-        //            }
-        //            _UpdateTexture(res, texture);
-        //        }
-        //    }
-        //}
 
 		public void UpdateTexture(Bitmap bitmap, int texture)
 		{
@@ -178,16 +180,10 @@ namespace Graphics
 				if (value)
 				{
 					this.WindowBorder = WindowBorder.Hidden;
-					IWindowInfo ii = ((OpenTK.NativeWindow)this).WindowInfo;
-					object inf = ((OpenTK.NativeWindow)this).WindowInfo;
-					PropertyInfo parentprop = (inf.GetType()).GetProperty("Parent");
-					IWindowInfo parent = ((IWindowInfo)parentprop.GetValue(ii, null));
-					PropertyInfo pi = (inf.GetType()).GetProperty("WindowHandle");
-					IntPtr hnd = ((IntPtr)pi.GetValue(parent, null));
-					SetWindowPos(hnd, IntPtr.Zero, display.Bounds.Left,
+					SetWindowPos(WindowHandle, IntPtr.Zero, display.Bounds.Left,
 					 display.Bounds.Top, display.Bounds.Width, display.Bounds.Height - 1, //Strange but necessary
 					 SetWindowPosFlags.SWP_NOMOVE);
-					SetWindowPos(hnd, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, display.Bounds.Left,
+					SetWindowPos(WindowHandle, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, display.Bounds.Left,
 					 display.Bounds.Top, display.Bounds.Width, display.Bounds.Height,
 					 SetWindowPosFlags.SWP_SHOWWINDOW);
 					this.WindowState = WindowState.Fullscreen;
@@ -195,7 +191,23 @@ namespace Graphics
 			}
 		}
 
+		protected override void OnMove(EventArgs e)
+		{
+			base.OnMove(e);
+		}
+
+		protected override void OnResize(EventArgs e)
+		{
+			base.OnResize(e);
+			glContext.Update(base.WindowInfo);
+			this.ResizeGraphics();
+			this.RenderFrame();
+		}
+
+		
+
 		#region DllImports
+
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, SetWindowPosFlags uFlags);

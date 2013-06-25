@@ -14,6 +14,7 @@ namespace Graphics
 		int width;
 		int height;
 		Color color = System.Drawing.Color.White;
+		Action onFinish;
         int Bpp;
         System.Drawing.Imaging.PixelFormat format;
 		private QuickDraw(Bitmap bitmap)
@@ -55,7 +56,14 @@ namespace Graphics
                     filler[x * Bpp + 1] = color.G;
                     filler[x * Bpp + 2] = color.R;
                     filler[x * Bpp + 3] = color.A;
-                }
+								}
+								else if (format == System.Drawing.Imaging.PixelFormat.Format32bppArgb)
+								{
+									filler[x * Bpp + 0] = color.B;
+									filler[x * Bpp + 1] = color.G;
+									filler[x * Bpp + 2] = color.R;
+									filler[x * Bpp + 3] = color.A;
+								}
                 else
                     throw new Exception("Format " + format.ToString() + " is not supported");
             }
@@ -122,11 +130,13 @@ namespace Graphics
 		public void Finish()
 		{
 			fast.Dispose();
+			if (onFinish != null)
+				onFinish();
 		}
 
-		public static QuickDraw Start(Bitmap bitmap)
+		public static QuickDraw Start(Bitmap bitmap, Action onFinish = null)
 		{
-			return new QuickDraw(bitmap);
+			return new QuickDraw(bitmap) { onFinish = onFinish };
 		}
 	}
 
