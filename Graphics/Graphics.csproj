@@ -47,7 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BitmapWindow.cs" />
-    <Compile Include="Drawer.cs" />
+    <Compile Include="QuickDraw.cs" />
     <Compile Include="FastBitmap.cs" />
     <Compile Include="GraphicsWindow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

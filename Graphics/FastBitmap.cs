@@ -47,9 +47,9 @@ namespace Graphics
 					byte* row = (byte*)data.Scan0 + (y * data.Stride);
 					int size = (Image.GetPixelFormatSize(bitmap.PixelFormat) / 8);
 					var idx = x * size;
-					row[idx + 0] = value.R;
+					row[idx + 0] = value.B;
 					row[idx + 1] = value.G;
-					row[idx + 2] = value.B;
+					row[idx + 2] = value.R;
 					if (size > 3)
 						row[idx + 3] = value.A;
 				}
@@ -58,6 +58,14 @@ namespace Graphics
 
 		public byte this[int x, int y, int ch]
 		{
+			get
+			{
+				unsafe
+				{
+					byte* row = (byte*)data.Scan0 + (y * data.Stride);
+					return row[x * (Image.GetPixelFormatSize(bitmap.PixelFormat) / 8) + ch];
+				}
+			}
 			set
 			{
 				if (x < 0 || x >= width)

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,8 +51,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
     public class Camera
     {
         KinectSensor sensor;
-        byte[] imageBuffer;
-        ColorImageFormat lastImageFormat;
 
         public Camera(KinectSensor sensor, Microsoft.Kinect.ColorImageFormat imageFormat)
         {
@@ -59,12 +58,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             sensor.ColorStream.Enable(imageFormat);
             if (!sensor.IsRunning)
                 sensor.Start();
-            imageBuffer = new byte[sensor.ColorStream.FramePixelDataLength];
-            lastImageFormat = imageFormat;
         }
 
         public Bitmap TakePicture()
         {
+            Thread.Sleep(700);
             Bitmap last = null;
             while (true)
             {
@@ -80,6 +78,20 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             }
         }
 
+        Bitmap ImageToBitmap(ColorImageFrame Image)
+        {
+            byte[] pixeldata = new byte[Image.PixelDataLength];
+            Image.CopyPixelDataTo(pixeldata);
+            Bitmap bmap = new Bitmap(Image.Width, Image.Height, PixelFormat.Format32bppRgb);
+            BitmapData bmapdata = bmap.LockBits(
+                new Rectangle(0, 0, Image.Width, Image.Height),
+                ImageLockMode.WriteOnly,
+                bmap.PixelFormat);
+            IntPtr ptr = bmapdata.Scan0;
+            Marshal.Copy(pixeldata, 0, ptr, Image.PixelDataLength);
+            bmap.UnlockBits(bmapdata);
+            return bmap;
+        }
         private Bitmap _TakePicture(int wait = 1000)
         {
             Bitmap result;
@@ -87,13 +99,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             {
                 if (frame == null)
                     return null;
+                return ImageToBitmap(frame);
                 //detect if the format has changed to resize buffer
-                bool haveNewFormat = this.lastImageFormat != frame.Format;
-                if (haveNewFormat)
-                {
-                    imageBuffer = new byte[frame.PixelDataLength];
-                    this.lastImageFormat = frame.Format;
-                }
+                var imageBuffer = new byte[frame.PixelDataLength];
                 // We must obtain a pointer to the first scanline of the top-down data.
                 // This happens to be the start of the buffer.
                 unsafe

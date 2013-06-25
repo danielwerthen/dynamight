@@ -1,6 +1,8 @@
 ﻿using Graphics;
+using OpenTK;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -8,139 +10,88 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
     public class Projector
     {
-        public Scanline Renderer;
+        public BitmapWindow window;
+        public Bitmap bitmap;
         public Projector()
         {
-            Renderer = Scanline.Make();
-
+            var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
+            window = new BitmapWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
+            window.Fullscreen = true;
+            window.Load();
+            window.ResizeGraphics();
+            bitmap = new Bitmap(window.Width, window.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            window.LoadBitmap(bitmap);
         }
 
         public void DrawBackground()
         {
-            DrawBackground(Colors.Black);
+            DrawBackground(Color.Black);
         }
 
         public void DrawBackground(Color color)
         {
-            Renderer.Fill(new OpenTK.Graphics.Color4(color.R, color.G, color.B, color.A));
+            QuickDraw.Start(bitmap)
+                .Fill(color)
+                .Finish();
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
+        }
+
+        public void DrawBitmap(Bitmap bitmap)
+        {
+            window.DrawBitmap(bitmap);
+        }
+
+        public void DrawBinary(int step, bool vertical, Color color)
+        {
+            QuickDraw.Start(bitmap)
+                .All((x,y) =>
+                    {
+                        double intensity = 0;
+                        double dt;
+                        if (vertical)
+                        {
+                            dt = (x / (double)bitmap.Width);
+                        }
+                        else
+                            dt = (y / (double)bitmap.Height);
+                        intensity = Math.Floor(dt * Math.Pow(2, step)) % 2;
+                        return Color.FromArgb((byte)(intensity*color.R), (byte)(intensity * color.G), (byte)(intensity * color.B));
+                    }, false)
+                .Finish();
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
         }
 
         public void DrawScanLine(int Step, int Length, bool Rows)
         {
-            Renderer.RenderScanline(Step, Length, Rows, OpenTK.Graphics.Color4.White);
+            QuickDraw.Start(bitmap)
+                .Fill(Color.Black)
+                .DrawShape(new System.Windows.Media.RectangleGeometry(new Rect(!Rows ? Step * Length : 0, Rows ? Step * Length : 0, !Rows ? Length : bitmap.Width, Rows ? Length : bitmap.Height)))
+                .Finish();
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
         }
 
         public void DrawPoints(System.Drawing.PointF[] points, float size)
         {
-            Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> img = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(new System.Drawing.Size(Renderer.Size.Width, Renderer.Size.Height));
+            var draw = QuickDraw.Start(bitmap)
+                .Fill(Color.Black);
             foreach (var p in points)
-            {
-                img.Draw(new Emgu.CV.Structure.CircleF(p, 10), new Emgu.CV.Structure.Bgr(System.Drawing.Color.White), 0);
-            }
-            Renderer.RenderBitmap(img.Bitmap);
-            img.Dispose();
+                draw.DrawPoint(p.X, p.Y, size);
+            draw.Finish();
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
         }
 
         public System.Drawing.Size Size
         {
-            get { return Renderer.Size; }
-        }
-    }
-
-    [Obsolete]
-    public class Projector2
-    {
-        byte[] colorPixels;
-        WriteableBitmap bitmap;
-
-        [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
-        internal static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall, ExactSpelling = true, SetLastError = true)]
-        internal static extern void MoveWindow(IntPtr hwnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-
-        Window window;
-        public Projector2(int? screenIndex = null)
-        {
-            var screen = screenIndex.HasValue ?  Screen.AllScreens[screenIndex.Value] : Screen.AllScreens.Where(row => !row.Primary).Skip(0).First();
-            window = new Window();
-            window.WindowState = WindowState.Maximized;
-            window.WindowStyle = WindowStyle.None;
-            window.ResizeMode = ResizeMode.NoResize;
-            window.Background = Brushes.Azure;
-            window.Show();
-            var id = GetForegroundWindow();
-            MoveWindow(id, screen.Bounds.Left, 0, screen.Bounds.Width, screen.Bounds.Height, true);
-            Image image;
-            window.Content = image = new Image() { Stretch = System.Windows.Media.Stretch.Uniform, HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
-            var source = PresentationSource.FromVisual(window);
-            var transform = source.CompositionTarget.TransformToDevice;
-            var pixelSize = transform.Transform(new Point(window.ActualWidth, window.ActualHeight));
-            bitmap = new WriteableBitmap((int)pixelSize.X, (int)pixelSize.Y, 96.0, 96.0, PixelFormats.Bgr24, null);
-            image.Source = bitmap;
-            colorPixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 3];
-          
-        }
-        public System.Drawing.Size Size
-        {
-            get { return new System.Drawing.Size(1024, 768); }
-        }
-
-        public void Refresh()
-        {
-            window.InvalidateVisual();
-        }
-        public void DrawBackground()
-        {
-            DrawBackground(Colors.BlueViolet);
-        }
-        public void DrawBackground(Color color)
-        {
-            //A little bit messed up, dont worry!
-            var c = new byte[] { color.R, color.B, color.G };
-            int idx = 0;
-            for (var i = 0; i < colorPixels.Length; i++)
-                colorPixels[i] = c[++idx > 2 ? idx = 0 : idx];
-            bitmap.WritePixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), colorPixels, bitmap.PixelWidth * 3, 0);
-            Refresh();
-        }
-
-        public void DrawScanLine(int step, int width, bool horizontal)
-        {
-            for (var y = 0; y < bitmap.PixelHeight; y++)
-            {
-                for (var x = 0; x < bitmap.PixelWidth; x++)
-                {
-                    //byte intensity = (horizontal ? step * width < y && (step + 1) * width > y : step * width < x && (step + 1) * width > x) ? (byte)255 : (byte)0;
-                    byte intensity = (step * width < x && (step + 1) * width > x) ? (byte)255 : (byte)0;
-                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 0] = intensity;
-                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 1] = intensity;
-                    colorPixels[(x + y * bitmap.PixelWidth) * 3 + 2] = intensity;
-                }
-            }
-            bitmap.WritePixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), colorPixels, bitmap.PixelWidth * 3, 0);
-            Refresh();
-        }
-        public void DrawPoints(System.Drawing.PointF[] corners, double size)
-        {
-            for (var y = 0; y < bitmap.PixelHeight; y++)
-            {
-                for (var x = 0; x < bitmap.PixelWidth; x++)
-                {
-                    byte intensity = corners.Any(row => Math.Abs(x - row.X) < size && Math.Abs(y - row.Y) < size) ? (byte)255 : (byte)0;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 0] = intensity;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 1] = intensity;
-                    colorPixels[(x + y * bitmap.PixelHeight) * 3 + 2] = intensity;
-                }
-            }
-            bitmap.WritePixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), colorPixels, bitmap.PixelWidth * 3, 0);
-            Refresh();
+            get { return window.Size; }
         }
     }
 

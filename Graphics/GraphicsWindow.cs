@@ -83,6 +83,27 @@ namespace Graphics
 			return ptr;
 		}
 
+        //public void UpdateTexture(Bitmap bitmap, int texture)
+        //{
+        //    using (var org = new FastBitmap(bitmap))
+        //    {
+        //        using (var res = new Bitmap(bitmap.Width, bitmap.Height))
+        //        {
+        //            using (var fast = new FastBitmap(res))
+        //            {
+        //                for (var x = 0; x < bitmap.Width; x++)
+        //                    for (var y = 0; y < bitmap.Height; y++)
+        //                    {
+        //                        fast[x, y, 0] = org[x, y, 0];
+        //                        fast[x, y, 1] = org[x, y, 1];
+        //                        fast[x, y, 2] = org[x, y, 2];
+        //                        fast[x, y, 3] = org[x, y, 3];
+        //                    }
+        //            }
+        //            _UpdateTexture(res, texture);
+        //        }
+        //    }
+        //}
 
 		public void UpdateTexture(Bitmap bitmap, int texture)
 		{
@@ -91,11 +112,17 @@ namespace Graphics
 
 			GL.BindTexture(Target, texture);
 
-			BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-			GL.TexImage2D(Target, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+			BitmapData data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+            OpenTK.Graphics.OpenGL.PixelFormat format;
+            if (bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed)
+                format = OpenTK.Graphics.OpenGL.PixelFormat.Luminance;
+            else
+                format = OpenTK.Graphics.OpenGL.PixelFormat.Bgra;
+			GL.TexImage2D(Target, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, format, PixelType.UnsignedByte, data.Scan0);
 			GL.Finish();
 			bitmap.UnlockBits(data);
-			if (GL.GetError() != ErrorCode.NoError)
+            var error = GL.GetError();
+			if (error != ErrorCode.NoError)
 				throw new Exception("Error loading texture " + "bitmap");
 
 		}

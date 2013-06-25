@@ -13,13 +13,16 @@ namespace Graphics
 		FastBitmap fast;
 		int width;
 		int height;
-		Color color;
+		Color color = System.Drawing.Color.White;
+        int Bpp;
+        System.Drawing.Imaging.PixelFormat format;
 		private QuickDraw(Bitmap bitmap)
 		{
 			fast = new FastBitmap(bitmap);
 			width = bitmap.Width;
 			height = bitmap.Height;
-			fill = new byte[width * height * 4];
+            format = bitmap.PixelFormat;
+            Bpp = (Image.GetPixelFormatSize(bitmap.PixelFormat) / 8); ;
 		}
 
 		public QuickDraw Color(Color color)
@@ -28,15 +31,38 @@ namespace Graphics
 			return this;
 		}
 
-		byte[] fill;
-		public QuickDraw Fill(Color color)
+        public QuickDraw All(Func<double, double, Color> foo, bool normalize = true)
+        {
+            for (var x = 0; x < width; x++)
+                for (var y = 0; y < height; y++)
+                    if (normalize)
+                        fast[x, y] = foo((double)x / (double)width, (double)y / (double)height);
+                    else
+                        fast[x, y] = foo((double)x, (double)y);
+            return this;
+        }
+
+        public QuickDraw Fill(Color color)
 		{
 			var temp = this.color;
 			this.color = color;
+            byte[] filler = new byte[width * height * Bpp];
+            for (var x = 0; x < width * height; x++)
+            {
+                if (format == System.Drawing.Imaging.PixelFormat.Format32bppRgb)
+                {
+                    filler[x * Bpp + 0] = color.B;
+                    filler[x * Bpp + 1] = color.G;
+                    filler[x * Bpp + 2] = color.R;
+                    filler[x * Bpp + 3] = color.A;
+                }
+                else
+                    throw new Exception("Format " + format.ToString() + " is not supported");
+            }
 			//for (int x = 0; x < width; x++)
 			//	for (int y = 0; y < height; y++)
 			//		DrawPoint(x, y);
-			fast.Fill(ref fill);
+			fast.Fill(ref filler);
 			this.color = temp;
 			return this;
 		}
@@ -46,6 +72,15 @@ namespace Graphics
 			fast[Convert.ToInt32(p.X), Convert.ToInt32(p.Y)] = this.color;
 			return this;
 		}
+
+        public QuickDraw DrawPoint(IEnumerable<PointF> points, double size = 1)
+        {
+            if (points == null)
+                return null;
+            foreach (var p in points)
+                this.DrawPoint(p.X, p.Y, size);
+            return this;
+        }
 
 		public QuickDraw DrawPoint(Point p)
 		{

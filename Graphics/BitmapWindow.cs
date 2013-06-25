@@ -31,7 +31,7 @@ uniform int HEIGHT;
 
 void main(void)
 {
-  gl_FragColor = texture2D( COLORTABLE, vec2(gl_FragCoord.x / float(WIDTH),gl_FragCoord.y / float(HEIGHT)));
+  gl_FragColor = texture2D( COLORTABLE, vec2(gl_FragCoord.x / float(WIDTH),1. - gl_FragCoord.y / float(HEIGHT)));
 }
 ";
 		int texture, program;
@@ -82,6 +82,12 @@ void main(void)
 
 			SwapBuffers();
 		}
+
+        public void DrawBitmap(Bitmap b)
+        {
+            LoadBitmap(b);
+            RenderFrame();
+        }
 		public override void Unload()
 		{
 			MakeCurrent();
