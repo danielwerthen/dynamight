@@ -55,6 +55,13 @@ void main(void)
 			UpdateTexture(bitmap, texture);
 		}
 
+        public void SetBounds(RectangleF rect)
+        {
+            var tc = new PointF(rect.Location.X, rect.Location.Y);
+            bounds = new RectangleF(tc, new SizeF(rect.Size.Width, rect.Size.Height));
+        }
+
+        private RectangleF bounds = new RectangleF(0,0,1,1);
 		public override void RenderFrame()
 		{
 			MakeCurrent();
@@ -70,13 +77,13 @@ void main(void)
 			GL.Begin(BeginMode.Quads);
 
 			GL.TexCoord2(0.0f, 1.0f);
-			GL.Vertex2(-1.0f, -1.0f);
+            GL.Vertex2(bounds.Left, bounds.Bottom); //GL.Vertex2(0.0f, 0.0f);
 			GL.TexCoord2(1.0f, 1.0f);
-			GL.Vertex2(1.0f, -1.0f);
+            GL.Vertex2(bounds.Right, bounds.Bottom); // GL.Vertex2(1.0f, 0.0f);
 			GL.TexCoord2(1.0f, 0.0f);
-			GL.Vertex2(1.0f, 1.0f);
+            GL.Vertex2(bounds.Right, bounds.Top); // GL.Vertex2(1.0f, 1.0f);
 			GL.TexCoord2(0.0f, 0.0f);
-			GL.Vertex2(-1.0f, 1.0f);
+            GL.Vertex2(bounds.Left, bounds.Top); // GL.Vertex2(0.0f, 1.0f);
 
 			GL.End();
 

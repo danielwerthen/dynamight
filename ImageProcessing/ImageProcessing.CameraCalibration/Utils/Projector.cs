@@ -28,6 +28,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             window.LoadBitmap(bitmap);
         }
 
+        public void SetBounds(RectangleF bounds)
+        {
+            window.SetBounds(bounds);
+        }
+
         public void DrawBackground()
         {
             DrawBackground(Color.Black);

@@ -1,4 +1,6 @@
-﻿using Microsoft.Kinect;
+﻿using Emgu.CV;
+using Emgu.CV.Structure;
+using Microsoft.Kinect;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,86 +15,111 @@ using System.Threading.Tasks;
 namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
 
-	public class RobustCamera : IDisposable
+	public class Camera : IDisposable
 	{
 		CancellationTokenSource cancellation;
 		Thread thread;
 		private readonly object syncRoot = new object();
 		Bitmap lastBitmap;
-		public RobustCamera()
+        public Camera()
+        {
+            cancellation = new CancellationTokenSource();
+            thread = new Thread(() =>
+            {
+                var token = cancellation.Token;
+                double intensity = 0.5;
+                while (!token.IsCancellationRequested)
+                {
+                    lock (syncRoot)
+                    {
+                        lastBitmap = new Bitmap(500, 500);
+                        Graphics.QuickDraw.Start(lastBitmap)
+                            .All((x, y) =>
+                            {
+                                var d = (int)(255 * intensity * (Math.Abs(0.5 - x) + Math.Abs(0.5 - y)));
+                                return Color.FromArgb(d, d, d);
+                            })
+                            .Finish();
+                        intensity *= 0.95;
+                        if (intensity < 0.0001)
+                            intensity = 0.5;
+                        Monitor.Pulse(syncRoot);
+                    }
+                    Thread.Sleep(60);
+                }
+            });
+            thread.Start();
+        }
+
+        public Camera(KinectSensor sensor, Microsoft.Kinect.ColorImageFormat imageFormat)
 		{
 			cancellation = new CancellationTokenSource();
-			//thread = new Thread(() =>
-			//{
-			//	var token = cancellation.Token;
-			//	sensor.ColorStream.Enable(imageFormat);
-			//	if (!sensor.IsRunning)
-			//		sensor.Start();
-			//	EventHandler<ColorImageFrameReadyEventArgs> onFrame = (o, e) =>
-			//		{
-			//			lock (syncRoot)
-			//			{
-			//				if (lastBitmap == null)
-			//					lastBitmap.Dispose();
-			//				lastBitmap = HandleFrame(e);
-			//				Monitor.Pulse(syncRoot);
-			//			}
-			//		};
-			//	sensor.ColorFrameReady += onFrame;
-			//	while (true)
-			//	{
-			//		if (token.IsCancellationRequested)
-			//		{
-			//			sensor.ColorFrameReady -= onFrame;
-			//			sensor.Stop();
-			//		}
-			//	}
-			//});
-			thread = new Thread(() =>
-			{
-				var token = cancellation.Token;
-				double intensity = 0.5;
-				while (!token.IsCancellationRequested)
-				{
-					lock (syncRoot)
-					{
-						lastBitmap = new Bitmap(500, 500);
-						Graphics.QuickDraw.Start(lastBitmap)
-							.All((x,y) => {
-								var d = (int)(255 * intensity * (Math.Abs(0.5 - x) + Math.Abs(0.5 - y)));
-								return Color.FromArgb(d, d, d);
-							})
-							.Finish();
-						intensity *= 0.95;
-						if (intensity < 0.0001)
-							intensity = 0.5;
-						Monitor.Pulse(syncRoot);
-					}
-					Thread.Sleep(60);
-				}
-			});
+            thread = new Thread(() =>
+            {
+                var token = cancellation.Token;
+                sensor.ColorStream.Enable(imageFormat);
+                if (!sensor.IsRunning)
+                    sensor.Start();
+                EventHandler<ColorImageFrameReadyEventArgs> onFrame = (o, e) =>
+                    {
+                        lock (syncRoot)
+                        {
+                            if (lastBitmap != null)
+                                lastBitmap.Dispose();
+                            lastBitmap = HandleFrame(e);
+                            Monitor.Pulse(syncRoot);
+                        }
+                    };
+                sensor.ColorFrameReady += onFrame;
+                while (true)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        sensor.ColorFrameReady -= onFrame;
+                        sensor.Stop();
+                    }
+                }
+            });
+
 			thread.Start();
 		}
 
-		public Bitmap TakePicture(double differenceThreshold = 10000)
+        public Bitmap TakePicture(int discardCount = 0)
 		{
-			Bitmap previous = null;
-			while (true)
-			{
-				var taken = _takePicture();
-				if (previous != null)
-				{
-					var a = new Emgu.CV.Image<Emgu.CV.Structure.Rgb, byte>(taken);
-					var b = new Emgu.CV.Image<Emgu.CV.Structure.Rgb, byte>(previous);
-					var t = a.DotProduct(b);
-					if (t < differenceThreshold)
-						return taken;
-					previous.Dispose();
-					previous = taken;
-				}
-				else
-					previous = taken;
-			}
+            Bitmap pic = null;
+            for (var i = 0; i <= discardCount; i++)
+            {
+                if (pic != null)
+                    pic.Dispose();
+                pic = _takePicture();
+
+            }
+            return pic;
+            //Bitmap previous = null;
+            //while (true)
+            //{
+            //    var taken = _takePicture();
+            //    if (previous != null)
+            //    {
+            //        using (var a = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(taken).SmoothBlur(45, 45))
+            //        using (var b = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(previous).SmoothBlur(45, 45))
+            //        {
+            //            var d = a - b;
+            //            double[] min, max;
+            //            Point[] minp, maxp;
+            //            d.MinMax(out min, out max, out minp, out maxp);
+            //            d.Dispose();
+            //            previous.Dispose();
+            //            if (max.All(row => row <= maxIntensityDifference))
+            //            {
+            //                return taken;
+            //            }
+            //            previous = taken;
+            //        }
+            //    }
+            //    else
+            //        previous = taken;
+            //}
 		}
 
 		private Bitmap _takePicture()
@@ -151,11 +178,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 		#endregion
 	}
 
-	public class Camera
+	public class Camera2
 	{
 		KinectSensor sensor;
 
-		public Camera(KinectSensor sensor, Microsoft.Kinect.ColorImageFormat imageFormat)
+		public Camera2(KinectSensor sensor, Microsoft.Kinect.ColorImageFormat imageFormat)
 		{
 			this.sensor = sensor;
 			sensor.ColorStream.Enable(imageFormat);

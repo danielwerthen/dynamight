@@ -22,16 +22,16 @@ namespace CalibrationTests
         public Form1()
         {
             InitializeComponent();
-            double[] xs = new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
-            var t1 = xs.Select(row => Math.Sign(Math.Sin((row / 20) * Math.PI * 2))).ToArray();
+
             var main = DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
             window.Load();
             window.ResizeGraphics();
+            DualCalibrator.DebugWindow = window;
             Projector proj = new Projector();
             Camera camera = new Camera(KinectSensor.KinectSensors.First(row => row.Status == KinectStatus.Connected), ColorImageFormat.RgbResolution1280x960Fps12);
-            DualCalibrator.DebugWindow = window;
-            DualCalibrator.Test(proj, camera, window);
+            
+            DualCalibrator.Test(proj, camera);
             //proj.Renderer.RenderBitmap(bitm);
             //BitmapWindow window = BitmapWindow.Make();
             
