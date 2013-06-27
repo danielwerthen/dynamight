@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="BitmapProgram.cs" />
     <Compile Include="BitmapWindow.cs" />
+    <Compile Include="PhaseModProgram.cs" />
     <Compile Include="ProgramWindow.cs" />
     <Compile Include="QuickDraw.cs" />
     <Compile Include="FastBitmap.cs" />

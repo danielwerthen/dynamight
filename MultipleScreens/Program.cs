@@ -46,19 +46,17 @@ namespace MultipleScreens
 			var t1 = idx << 3;
 			var t2 = (idx / Math.Pow(2, maxStep - 3)) * width;
 
-			RobustCamera cam = new RobustCamera();
+			Camera cam = new Camera();
 
 			var window = new ProgramWindow(500, 500);
 			window.ResizeGraphics();
-			BitmapProgram bp;
-			window.SetProgram(bp = new BitmapProgram());
-			bp.Draw().Fill(Color.Blue).Finish();
+			PhaseModProgram bp;
+			window.SetProgram(bp = new PhaseModProgram());
+			bp.SetParams(1, 0, true, Color.FromArgb(0,255,0));
 			window.RenderFrame();
 			while (true)
 			{
 				window.ProcessEvents();
-				var bitm = cam.TakePicture();
-				bp.LoadBitmap(bitm);
 				window.RenderFrame();
 			}
 		}
