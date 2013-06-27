@@ -78,6 +78,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="DualCalibrator.cs" />
+    <Compile Include="PhaseModulation.cs" />
     <Compile Include="StructuredLightInterpreter.cs" />
     <Compile Include="StructuredLightWindow.xaml.cs">
       <DependentUpon>StructuredLightWindow.xaml</DependentUpon>

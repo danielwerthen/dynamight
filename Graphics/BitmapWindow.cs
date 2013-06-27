@@ -28,10 +28,15 @@ namespace Graphics
 uniform sampler2D COLORTABLE;
 uniform int WIDTH;
 uniform int HEIGHT;
+uniform vec2 TRANSLATE;
+uniform vec2 SCALE;
+
 
 void main(void)
 {
-  gl_FragColor = texture2D( COLORTABLE, vec2(gl_FragCoord.x / float(WIDTH),1. - gl_FragCoord.y / float(HEIGHT)));
+  vec2 coord = vec2(gl_FragCoord.x / float(WIDTH),1. - gl_FragCoord.y / float(HEIGHT));
+  coord = vec2((coord.x - TRANSLATE.x) / SCALE.x, (coord.y + TRANSLATE.y) / SCALE.y );
+  gl_FragColor = texture2D( COLORTABLE, coord);
 }
 ";
 		int texture, program;
@@ -73,6 +78,8 @@ void main(void)
 			GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
 			GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), Width);
 			GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), Height);
+            GL.Uniform2(GL.GetUniformLocation(program, "TRANSLATE"), new Vector2(bounds.X, bounds.Y));
+            GL.Uniform2(GL.GetUniformLocation(program, "SCALE"), new Vector2(bounds.Width, bounds.Height));
 
 			GL.Begin(BeginMode.Quads);
 

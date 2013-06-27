@@ -98,6 +98,34 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         {
             get { return window.Size; }
         }
+
+        public void Draw(Action<Bitmap> foo)
+        {
+            foo(bitmap);
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
+        }
+
+        public void DrawSine(int step, bool vertical, Color color)
+        {
+            QuickDraw.Start(bitmap)
+                .All((x, y) =>
+                {
+                    double intensity = 0;
+                    double dt;
+                    if (vertical)
+                    {
+                        dt = (x / (double)bitmap.Width);
+                    }
+                    else
+                        dt = (y / (double)bitmap.Height);
+                    intensity = (Math.Cos(dt * 2.0 * Math.PI * step) + 1.0) / 2.0;
+                    return Color.FromArgb((byte)(intensity * color.R), (byte)(intensity * color.G), (byte)(intensity * color.B));
+                }, false)
+                .Finish();
+            window.LoadBitmap(bitmap);
+            window.RenderFrame();
+        }
     }
 
 }

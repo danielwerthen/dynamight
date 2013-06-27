@@ -93,8 +93,30 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return true;
         }
 
+        public static Func<Bitmap, Func<int, int, double>> PhaseClassifier(Bitmap nolight, Bitmap fulllight, double width, double height)
+        {
+            var nimg = new Image<Bgr, byte>(nolight).Split()[1];
+            var fimg = new Image<Bgr, byte>(fulllight).Split()[1];
+            return (light) =>
+            {
+                var limg = new Image<Bgr, byte>(light).Split()[1];
+                return (x, y) =>
+                    {
+                        var ni = nimg[y, x].Intensity;
+                        var fi = fimg[y, x].Intensity;
+                        var li = limg[y, x].Intensity;
+                        return (double)(li - ni) / (double)(fi - ni);
+                    };
+            };
+        }
+
         public static CalibrationResult Calibrate(Projector projector, Camera camera, Emgu.CV.Structure.MCvPoint3D32f[] globalCorners, int iterations = 10, int iterationTimeout = 500)
         {
+            if (PhaseModulation.DetermineAlgorithmIntegrity(8, 10000, 0.01) > 0.15)
+                throw new Exception("Phase modulation integrity is failing");
+
+            //projector.SetBounds(new RectangleF(0.25f, 0.25f, 0.5f, 0.5f));
+            //projector.DrawBinary(3, true, Color.White);
             //Red and blue checkerboard
             //For each orientation of checkerboard:
             //float w = projector.bitmap.Width;
@@ -106,7 +128,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             ////projector.SetBounds(DetermineBounds(ps, projector.bitmap.Width, projector.bitmap.Height));
             //projector.SetBounds(DetermineBounds(ps, w, h));
             //projector.DrawBackground(Color.White);
-           
+
             var datas = new CalibrationData[iterations];
             for (int i = 0; i < iterations; i++)
             {
@@ -114,13 +136,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 projector.DrawBackground(Color.Black);
                 //Detect corners in camera space
                 PointF[] cameraCorners;
-                Bitmap withCorners, nolight;
+                Bitmap withCorners;
                 do
                 {
-                    nolight = camera.TakePicture(5);
+                    var nolight = camera.TakePicture(5);
                     withCorners = camera.TakePicture();
                     cameraCorners = DetectCornersRB(nolight, new Size(7, 4));
-                    
+
                 } while (cameraCorners == null);
                 //cameraCorners = cameraCorners.Take(1).Union(cameraCorners.Skip(cameraCorners.Length - 1)).ToArray();
                 if (DebugWindow != null)
@@ -135,12 +157,75 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 //Determine rough checkerboard coordinates in projector space with graycode or binary structured light
                 var projOutline = DetectRoughCorners(cameraCorners, projector, camera, Color.Green);
                 projector.SetBounds(projOutline);
-                projector.DrawBackground(Color.White);
+
+
+                double[] xs, ys;
+                {
+                    projector.DrawBackground(Color.Black);
+                    var nolight = camera.TakePicture(5);
+                    projector.DrawBackground(Color.Green);
+                    var fulllight = camera.TakePicture(5);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, -2 * Math.PI / 3, true, Color.Green));
+                    var light1 = camera.TakePicture(2);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 0, true, Color.Green));
+                    var light2 = camera.TakePicture(2);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 2 * Math.PI / 3, true, Color.Green));
+                    var light3 = camera.TakePicture(2);
+
+                    var pc = PhaseClassifier(nolight, fulllight, projector.bitmap.Width, projector.bitmap.Height);
+                    var pc1 = pc(light1);
+                    var pc2 = pc(light2);
+                    var pc3 = pc(light3);
+                    xs = cameraCorners.Select(row => PhaseModulation.IntensityToPhase(pc1((int)row.X, (int)row.Y),
+                        pc2((int)row.X, (int)row.Y),
+                        pc3((int)row.X, (int)row.Y))).ToArray();
+
+                }
+
+                {
+                    projector.DrawBackground(Color.Black);
+                    var nolight = camera.TakePicture(5);
+                    projector.DrawBackground(Color.Green);
+                    var fulllight = camera.TakePicture(5);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, -2 * Math.PI / 3, false, Color.Green));
+                    var light1 = camera.TakePicture(2);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 0, false, Color.Green));
+                    var light2 = camera.TakePicture(2);
+                    projector.DrawBackground(Color.Black);
+                    camera.TakePicture(5).Dispose();
+                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 2 * Math.PI / 3, false, Color.Green));
+                    var light3 = camera.TakePicture(2);
+
+                    var pc = PhaseClassifier(nolight, fulllight, projector.bitmap.Width, projector.bitmap.Height);
+                    var pc1 = pc(light1);
+                    var pc2 = pc(light2);
+                    var pc3 = pc(light3);
+                    ys = cameraCorners.Select(row => PhaseModulation.IntensityToPhase(pc1((int)row.X, (int)row.Y),
+                        pc2((int)row.X, (int)row.Y),
+                        pc3((int)row.X, (int)row.Y))).ToArray();
+
+                }
+
+                var resx = xs.Select(row => PhaseModulation.AbsolutePhase(new double[] { row }, new int[] { 1 })).Select(row => row * projector.bitmap.Width).ToArray();
+                var resy = ys.Select(row => PhaseModulation.AbsolutePhase(new double[] { row }, new int[] { 1 })).Select(row => row * projector.bitmap.Height).ToArray();
+                var res = resx.Zip(resy, (x, y) => new PointF((float)Math.Round(x, 0), (float)Math.Round(y, 0))).ToArray();
+                projector.SetBounds(new RectangleF(0, 0, 1, 1));
+                projector.DrawPoints(res, 5f);
                 //Determine corners in projector space
                 //var projectorCorners = DetectProjectorCorners(nolight, cameraCorners, projOutline, projector, camera);
                 //Save corners in camera and projector space and store along side global coordinates that matches current checkerboard
                 //var data = new CalibrationData() { CameraCorners = cameraCorners, ProjectorCorners = projectorCorners, GlobalCorners = globalCorners };
-                
+
                 datas[i] = default(CalibrationData);
                 Thread.Sleep(iterationTimeout);
             }
