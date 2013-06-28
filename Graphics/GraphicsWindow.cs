@@ -23,7 +23,7 @@ namespace Graphics
 		{
 			this.Visible = true;
 			this.display = display;
-			glContext = new GraphicsContext(GraphicsMode.Default, WindowInfo, 2, 0, GraphicsContextFlags.Default);
+			glContext = new GraphicsContext(GraphicsMode.Default, WindowInfo);
 			glContext.MakeCurrent(WindowInfo);
 			(glContext as IGraphicsContextInternal).LoadAll();
 			LoadWindowHandle();

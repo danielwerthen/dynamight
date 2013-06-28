@@ -13,6 +13,21 @@ using Graphics;
 
 namespace Dynamight.ImageProcessing.CameraCalibration
 {
+    public class Range
+    {
+        public static IEnumerable<int> OfInts(int stop, int start = 0, int step = 1)
+        {
+            for (var i = start; i < stop; i += step)
+                yield return i;
+        }
+
+        public static IEnumerable<double> OfDoubles(double stop, double start = 0, double step = 1)
+        {
+            for (var i = start; i < stop; i += step)
+                yield return i;
+        }
+    }
+
     public class DualCalibrator
     {
         public static void DrawNoFull(Projector proj, Camera camera, out Bitmap result)
@@ -110,10 +125,246 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             };
         }
 
+        public static PointF[] PhaseCalib(Projector projector, Camera camera, PointF[] cameraCorners, int steps = 7)
+        {
+            var color = Color.Green;
+            projector.DrawBackground(Color.Black);
+            var nolight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            
+            projector.DrawBackground(color);
+            var fulllight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            Func<int, bool, Image<Gray, byte>[]> takePics = (step, vertical) =>
+            {
+                Image<Gray, byte>[] pics = new Image<Gray, byte>[3];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(-2.0f * Math.PI / 3.0f), vertical, color);
+                pics[0] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, 0f, vertical, color);
+                pics[1] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(2.0f * Math.PI / 3.0f), vertical, color);
+                pics[2] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                return pics;
+            };
+            Func<Image<Gray, byte>[], double[]> itop = (pics) =>
+            {
+                return cameraCorners.Select(c =>
+                {
+                    var mini = nolight[(int)c.Y, (int)c.X].Intensity;
+                    var maxi = fulllight[(int)c.Y, (int)c.X].Intensity;
+                    var i1 = pics[0][(int)c.Y, (int)c.X].Intensity;
+                    i1 = (i1 - mini) / (i1 - maxi);
+                    var i2 = pics[1][(int)c.Y, (int)c.X].Intensity;
+                    i2 = (i2 - mini) / (i2 - maxi);
+                    var i3 = pics[2][(int)c.Y, (int)c.X].Intensity;
+                    i3 = (i3 - mini) / (i3 - maxi);
+                    return PhaseModulation.IntensityToPhase(i1, i2, i3);
+                }).ToArray();
+            };
+
+            int w = projector.Size.Width;
+            int h = projector.Size.Height;
+            int subdiv = 1;
+            int[] xs = new int[cameraCorners.Length];
+            int[] ys = new int[cameraCorners.Length];
+            int[] ids = Range.OfInts(cameraCorners.Length).ToArray();
+            for (int i = 0; i < steps; i++)
+            {
+                var xpics = takePics(subdiv, true);
+                var xphs = itop(xpics);
+                var xh = ids.Select(id => xphs[id] > 0.5).ToArray();
+
+                var qd = QuickDraw.Start(xpics[1].Bitmap);
+                var thrash = ids.Select(id =>
+                {
+                    qd.Color(xh[id] ? Color.White : Color.Gray);
+                    qd.DrawPoint(cameraCorners[id].X, cameraCorners[id].Y, 5);
+                    return id;
+                }).ToArray();
+                qd.Finish();
+                DebugWindow.DrawBitmap(xpics[1].Bitmap);
+
+                var ypics = takePics(subdiv, false);
+                var yphs = itop(ypics);
+                var yh = ids.Select(id => yphs[id] > 0.5).ToArray();
+
+                qd = QuickDraw.Start(ypics[1].Bitmap);
+                thrash = ids.Select(id =>
+                {
+                    qd.Color(yh[id] ? Color.White : Color.Gray);
+                    qd.DrawPoint(cameraCorners[id].X, cameraCorners[id].Y, 5);
+                    return id;
+                }).ToArray();
+                qd.Finish();
+                DebugWindow.DrawBitmap(ypics[1].Bitmap);
+
+
+                xs = ids.Select(id => (xs[id] << 1) | (xh[id] ? 1 : 0)).ToArray();
+                ys = ids.Select(id => (ys[id] << 1) | (yh[id] ? 1 : 0)).ToArray();
+
+
+                subdiv = subdiv << 1;
+            }
+            var fxs = ids.Select(id => ((double)xs[id] / (double)subdiv) * w).ToArray();
+            var fys = ids.Select(id => ((double)ys[id] / (double)subdiv) * h).ToArray();
+            return fxs.Zip(fys, (x,y) => new PointF((float)x,(float)y)).ToArray();
+        }
+
+        public static PointF[] PhineTune(Projector projector, Camera camera, PointF[] cameraCorners, PointF[] rough, int subdiv)
+        {
+            var color = Color.Green;
+            projector.DrawBackground(Color.Black);
+            var nolight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            projector.DrawBackground(color);
+            var fulllight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            Func<int, bool, Image<Gray, byte>[]> takePics = (step, vertical) =>
+            {
+                Image<Gray, byte>[] pics = new Image<Gray, byte>[3];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(-2.0f * Math.PI / 3.0f), vertical, color);
+                pics[0] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, 0f, vertical, color);
+                pics[1] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(2.0f * Math.PI / 3.0f), vertical, color);
+                pics[2] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                return pics;
+            };
+            Func<Image<Gray, byte>[], double[]> itop = (pics) =>
+            {
+                return cameraCorners.Select(c =>
+                {
+                    var mini = nolight[(int)c.Y, (int)c.X].Intensity;
+                    var maxi = fulllight[(int)c.Y, (int)c.X].Intensity;
+                    var i1 = pics[0][(int)c.Y, (int)c.X].Intensity;
+                    i1 = (i1 - mini) / (i1 - maxi);
+                    var i2 = pics[1][(int)c.Y, (int)c.X].Intensity;
+                    i2 = (i2 - mini) / (i2 - maxi);
+                    var i3 = pics[2][(int)c.Y, (int)c.X].Intensity;
+                    i3 = (i3 - mini) / (i3 - maxi);
+                    return PhaseModulation.IntensityToPhase(i1, i2, i3);
+                }).ToArray();
+            };
+
+            int w = projector.Size.Width;
+            int h = projector.Size.Height;
+            var xphs = itop(takePics(subdiv, true));
+            var yphs = itop(takePics(subdiv, false));
+
+            var ids = new int[cameraCorners.Length];
+            int idx = 0;
+            ids = ids.Select(i => idx++).ToArray();
+
+            return ids.Select(i =>
+                {
+                    var v = rough[i];
+                    var denom = (double)subdiv;
+                    var xph = xphs[i] * (w / denom);
+                    var yph = yphs[i] * (h / denom);
+                    var phsx = Math.Floor(v.X / denom) * denom;
+                    var phsy = Math.Floor(v.Y / denom) * denom;
+                    double apx = v.X / w;
+                    double phx = xphs[i];
+
+                    apx = Math.Floor(apx / (1.0 / denom)) * (1.0 / denom) + (phx < 1 ? phx / denom : 0);
+                    apx = Math.Round(apx, 5) * w;
+
+                    double apy = v.Y / h;
+                    double phy = yphs[i];
+
+                    apy = Math.Floor(apy / (1.0 / denom)) * (1.0 / denom) + (phy < 1 ? phy / denom : 0);
+                    apy = Math.Round(apy, 5) * h;
+
+                    return new PointF((float)(apx), (float)(apy));
+
+                }).ToArray();
+
+        }
+
+        public static PointF[] PhaseMod(Projector projector, Camera camera, PointF[] cameraCorners)
+        {
+            var color = Color.FromArgb(0, 255, 0);
+            projector.DrawBackground(Color.Black);
+            var nolight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            projector.DrawBackground(color);
+            var fulllight = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+            Func<int, bool, Image<Gray, byte>[]> takePics = (step, vertical) =>
+            {
+                Image<Gray, byte>[] pics = new Image<Gray, byte>[3];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(-2.0f * Math.PI / 3.0f), vertical, color);
+                pics[0] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, 0f, vertical, color);
+                pics[1] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawPhaseMod(step, (float)(2.0f * Math.PI / 3.0f), vertical, color);
+                pics[2] = new Image<Bgr, byte>(camera.TakePicture(2)).Split()[1];
+                return pics;
+            };
+
+            Func<Image<Gray, byte>[], PointF[], double[]> itop = (pics, corners) =>
+            {
+                return corners.Select(c =>
+                    {
+                        var mini = nolight[(int)c.Y, (int)c.X].Intensity;
+                        var maxi = fulllight[(int)c.Y, (int)c.X].Intensity;
+                        var i1 = pics[0][(int)c.Y, (int)c.X].Intensity;
+                        i1 = (i1 - mini) / (i1 - maxi);
+                        var i2 = pics[1][(int)c.Y, (int)c.X].Intensity;
+                        i2 = (i2 - mini) / (i2 - maxi);
+                        var i3 = pics[2][(int)c.Y, (int)c.X].Intensity;
+                        i3 = (i3 - mini) / (i3 - maxi);
+                        return PhaseModulation.IntensityToPhase(i1, i2, i3);
+                    }).ToArray();
+            };
+            var ids = new int[cameraCorners.Length];
+            int idx = 0;
+            ids = ids.Select(i => idx++).ToArray();
+            int steps = 7;
+            int[] stepa = new int[steps];
+            idx = 1;
+            stepa = stepa.Select(i => idx++).ToArray();
+            int[] stepx = stepa.Select(row => (int)Math.Pow(2, row - 1)).ToArray();
+            double[][] verticals = new double[steps][];
+            for (var i = 1; i <= steps; i++)
+            {
+                var pics = takePics(stepx[i - 1], true);
+                verticals[i - 1] = itop(pics, cameraCorners);
+            }
+            var apv = ids.Select(i => PhaseModulation.AbsolutePhase(
+                stepa.Select(s => verticals[s - 1][i]).ToArray(), stepa))
+                .Select(ph => ph * projector.Size.Width)
+                .ToArray();
+
+            double[][] horizontals = new double[steps][];
+            for (var i = 1; i <= steps; i++)
+            {
+                var pics = takePics(stepx[i - 1], false);
+                horizontals[i - 1] = itop(pics, cameraCorners);
+            }
+            var aph = ids.Select(i => PhaseModulation.AbsolutePhase(
+                stepa.Select(s => horizontals[s - 1][i]).ToArray(), stepx))
+                .Select(ph => ph * projector.Size.Height)
+                .ToArray();
+            return ids.Select(i => new PointF((float)apv[i], (float)aph[i])).ToArray();
+        }
+
         public static CalibrationResult Calibrate(Projector projector, Camera camera, Emgu.CV.Structure.MCvPoint3D32f[] globalCorners, int iterations = 10, int iterationTimeout = 500)
         {
-            if (PhaseModulation.DetermineAlgorithmIntegrity(8, 10000, 0.01) > 0.15)
-                throw new Exception("Phase modulation integrity is failing");
+            //if (PhaseModulation.DetermineAlgorithmIntegrity(8, 10000, 0.01) > 0.15)
+            //    throw new Exception("Phase modulation integrity is failing");
 
             //projector.SetBounds(new RectangleF(0.25f, 0.25f, 0.5f, 0.5f));
             //projector.DrawBinary(3, true, Color.White);
@@ -155,10 +406,35 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 }
 
                 //Determine rough checkerboard coordinates in projector space with graycode or binary structured light
-                var projOutline = DetectRoughCorners(cameraCorners, projector, camera, Color.Green);
-                projector.SetBounds(projOutline);
+                //var smooth = PhaseCalib(projector, camera, cameraCorners);
+                //projector.DrawPoints(smooth, 5);
+                Func<PointF[]> Pass = () =>
+                {
+                    var rough = DetectRoughCorners(cameraCorners, projector, camera, Color.Green);
 
+                    //var phine = PhineTune(projector, camera, cameraCorners, rough, 32);
+                    var phine2 = PhineTune(projector, camera, cameraCorners, rough, 64);
+                    var phine3 = PhineTune(projector, camera, cameraCorners, phine2, 128);
+                    return phine3;
+                };
 
+                var ids = Range.OfInts(cameraCorners.Length);
+                var passes = Range.OfInts(10).ToArray();
+                var data = passes.Select(p => Pass()).ToArray();
+                var result = ids.Select(row => passes.Select(p => data[p][row])).ToArray();
+                var avg = ids.Select(id => new PointF(result[id].Select(r => r.X).Average(),
+                    result[id].Select(r => r.Y).Average())).ToArray();
+                projector.DrawPoints(avg, 5);
+                var avg2 = ids.Select(id => new PointF(
+                    result[id].Select(r => new { val= r.X, dist = Math.Abs(avg[id].X - r.X) })
+                        .OrderByDescending(row => row.dist).Reverse().Take(5).Select(row => row.val).Average(),
+                    result[id].Select(r => new { val = r.Y, dist = Math.Abs(avg[id].Y - r.Y) })
+                        .OrderByDescending(row => row.dist).Reverse().Take(5).Select(row => row.val).Average())).ToArray();
+                projector.DrawPoints(avg2, 5);
+                //var outline = DetermineBounds(rough, projector.bitmap.Width, projector.bitmap.Height);
+                //projector.SetBounds(outline);
+
+                /*
                 double[] xs, ys;
                 {
                     projector.DrawBackground(Color.Black);
@@ -195,15 +471,15 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     var fulllight = camera.TakePicture(5);
                     projector.DrawBackground(Color.Black);
                     camera.TakePicture(5).Dispose();
-                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, -2 * Math.PI / 3, false, Color.Green));
+                    projector.DrawPhaseMod(1, (float)(-2 * Math.PI / 3), false, Color.FromArgb(0, 255, 0));
                     var light1 = camera.TakePicture(2);
                     projector.DrawBackground(Color.Black);
                     camera.TakePicture(5).Dispose();
-                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 0, false, Color.Green));
+                    projector.DrawPhaseMod(1, (float)(0), false, Color.FromArgb(0, 255, 0));
                     var light2 = camera.TakePicture(2);
                     projector.DrawBackground(Color.Black);
                     camera.TakePicture(5).Dispose();
-                    projector.Draw(PhaseModulation.DrawPhaseModulation(1, 2 * Math.PI / 3, false, Color.Green));
+                    projector.DrawPhaseMod(1, (float)(2 * Math.PI / 3), false, Color.FromArgb(0, 255, 0));
                     var light3 = camera.TakePicture(2);
 
                     var pc = PhaseClassifier(nolight, fulllight, projector.bitmap.Width, projector.bitmap.Height);
@@ -221,6 +497,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 var res = resx.Zip(resy, (x, y) => new PointF((float)Math.Round(x, 0), (float)Math.Round(y, 0))).ToArray();
                 projector.SetBounds(new RectangleF(0, 0, 1, 1));
                 projector.DrawPoints(res, 5f);
+                 */
                 //Determine corners in projector space
                 //var projectorCorners = DetectProjectorCorners(nolight, cameraCorners, projOutline, projector, camera);
                 //Save corners in camera and projector space and store along side global coordinates that matches current checkerboard
@@ -277,7 +554,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 Math.Pow((a[2] - b[2]), 2));
         }
 
-        public static RectangleF DetectRoughCorners(PointF[] cameraCorners, Projector projector, Camera camera, Color fullColor)
+        public static PointF[] DetectRoughCorners(PointF[] cameraCorners, Projector projector, Camera camera, Color fullColor)
         {
             projector.DrawBackground(Color.Black);
             var nolight = camera.TakePicture(10);
@@ -285,8 +562,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             var projected = BinarySL(projector, camera, cameraCorners, nolight, fullColor, false)
                 .Zip(BinarySL(projector, camera, cameraCorners, nolight, fullColor, true), (y,x) => new PointF((float)x, (float)y))
                 .ToArray();
-            projector.DrawPoints(projected.Select(row => new PointF(row.X, row.Y)).ToArray(), 5);
-            return DetermineBounds(projected, projector.bitmap.Width, projector.bitmap.Height);
+            return projected;
         }
 
         public static double[] BinarySL(Projector projector, Camera camera, PointF[] corners, Bitmap nolight, Color fullColor, bool vertical)

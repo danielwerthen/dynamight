@@ -15,22 +15,25 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
     public class Projector
     {
-        public BitmapWindow window;
+        public ProgramWindow window;
         public Bitmap bitmap;
+        public StructuredLightProgram slp;
+        public BitmapProgram bp;
         public Projector()
         {
             var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
-            window = new BitmapWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
+            window = new ProgramWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
             window.Fullscreen = true;
             window.Load();
             window.ResizeGraphics();
-            bitmap = new Bitmap(window.Width, window.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-            window.LoadBitmap(bitmap);
+
+            window.SetProgram(slp = new StructuredLightProgram());
+            bp = new BitmapProgram(bitmap = new Bitmap(window.Width, window.Height));
         }
 
         public void SetBounds(RectangleF bounds)
         {
-            window.SetBounds(bounds);
+            //window.SetBounds(bounds);
         }
 
         public void DrawBackground()
@@ -40,57 +43,42 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
         public void DrawBackground(Color color)
         {
-            QuickDraw.Start(bitmap)
-                .Fill(color)
-                .Finish();
-            window.LoadBitmap(bitmap);
+            window.SetProgram(slp);
+            slp.SetIdentity(color);
             window.RenderFrame();
         }
 
         public void DrawBitmap(Bitmap bitmap)
         {
-            window.DrawBitmap(bitmap);
+            window.SetProgram(bp);
+            bp.LoadBitmap(bitmap);
+            window.RenderFrame();
         }
 
         public void DrawBinary(int step, bool vertical, Color color)
         {
-            QuickDraw.Start(bitmap)
-                .All((x,y) =>
-                    {
-                        double intensity = 0;
-                        double dt;
-                        if (vertical)
-                        {
-                            dt = (x / (double)bitmap.Width);
-                        }
-                        else
-                            dt = (y / (double)bitmap.Height);
-                        intensity = Math.Floor(dt * Math.Pow(2, step)) % 2;
-                        return Color.FromArgb((byte)(intensity*color.R), (byte)(intensity * color.G), (byte)(intensity * color.B));
-                    }, false)
-                .Finish();
-            window.LoadBitmap(bitmap);
+            window.SetProgram(slp);
+            slp.SetBinary(step, vertical, color);
             window.RenderFrame();
         }
 
         public void DrawScanLine(int Step, int Length, bool Rows)
         {
-            QuickDraw.Start(bitmap)
-                .Fill(Color.Black)
-                .DrawShape(new System.Windows.Media.RectangleGeometry(new Rect(!Rows ? Step * Length : 0, Rows ? Step * Length : 0, !Rows ? Length : bitmap.Width, Rows ? Length : bitmap.Height)))
-                .Finish();
-            window.LoadBitmap(bitmap);
-            window.RenderFrame();
+            //QuickDraw.Start(bitmap)
+            //    .Fill(Color.Black)
+            //    .DrawShape(new System.Windows.Media.RectangleGeometry(new Rect(!Rows ? Step * Length : 0, Rows ? Step * Length : 0, !Rows ? Length : bitmap.Width, Rows ? Length : bitmap.Height)))
+            //    .Finish();
+            //window.LoadBitmap(bitmap);
+            //window.RenderFrame();
         }
 
         public void DrawPoints(System.Drawing.PointF[] points, float size)
         {
-            var draw = QuickDraw.Start(bitmap)
-                .Fill(Color.Black);
+            window.SetProgram(bp);
+            var draw = bp.Draw().Fill(Color.Black);
             foreach (var p in points)
                 draw.DrawPoint(p.X, p.Y, size);
             draw.Finish();
-            window.LoadBitmap(bitmap);
             window.RenderFrame();
         }
 
@@ -102,28 +90,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         public void Draw(Action<Bitmap> foo)
         {
             foo(bitmap);
-            window.LoadBitmap(bitmap);
-            window.RenderFrame();
+            DrawBitmap(bitmap);
         }
 
-        public void DrawSine(int step, bool vertical, Color color)
+        public void DrawPhaseMod(int step, float phase, bool vertical, Color color)
         {
-            QuickDraw.Start(bitmap)
-                .All((x, y) =>
-                {
-                    double intensity = 0;
-                    double dt;
-                    if (vertical)
-                    {
-                        dt = (x / (double)bitmap.Width);
-                    }
-                    else
-                        dt = (y / (double)bitmap.Height);
-                    intensity = (Math.Cos(dt * 2.0 * Math.PI * step) + 1.0) / 2.0;
-                    return Color.FromArgb((byte)(intensity * color.R), (byte)(intensity * color.G), (byte)(intensity * color.B));
-                }, false)
-                .Finish();
-            window.LoadBitmap(bitmap);
+            window.SetProgram(slp);
+            slp.SetPhaseMod(step, phase, vertical, color);
             window.RenderFrame();
         }
     }

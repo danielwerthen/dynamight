@@ -36,6 +36,8 @@ namespace Graphics
 
 		public void SetProgram(Program program)
 		{
+            if (program == active)
+                return;
 			MakeCurrent();
 			if (active != null)
 				active.Unload();

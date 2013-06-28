@@ -50,9 +50,9 @@ namespace MultipleScreens
 
 			var window = new ProgramWindow(500, 500);
 			window.ResizeGraphics();
-			PhaseModProgram bp;
-			window.SetProgram(bp = new PhaseModProgram());
-			bp.SetParams(1, 0, true, Color.FromArgb(0,255,0));
+			StructuredLightProgram bp;
+			window.SetProgram(bp = new StructuredLightProgram());
+			bp.SetPhaseMod(1, 0, true, Color.FromArgb(0,255,0));
 			window.RenderFrame();
 			while (true)
 			{
