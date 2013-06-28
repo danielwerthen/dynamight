@@ -28,6 +28,14 @@ namespace MultipleScreens
 			while (i <= to)
 				yield return i+= step;
 		}
+		static IEnumerable<int> Range(int to, int from = 0, int step = 1)
+		{
+			if (to < from)
+				yield break;
+			var i = from;
+			while (i <= to)
+				yield return i += step;
+		}
 
 		static void Main(string[] args)
 		{
@@ -48,11 +56,32 @@ namespace MultipleScreens
 
 			Camera cam = new Camera();
 
-			var window = new ProgramWindow(500, 500);
+			var window = new ProgramWindow(1000, 50, 500, 500);
 			window.ResizeGraphics();
-			StructuredLightProgram bp;
-			window.SetProgram(bp = new StructuredLightProgram());
-			bp.SetPhaseMod(1, 0, true, Color.FromArgb(0,255,0));
+			BitmapProgram bp = new BitmapProgram();
+			window.SetProgram(bp);
+			var xs = Range(400, 100, 25).ToArray();
+			var ys = Range(400, 100, 25).ToArray();
+			var points = new PointF[xs.Length * ys.Length];
+			Random r = new Random();
+			Func<double> ra = () => r.NextDouble() * r.NextDouble() * 15;
+			for (var yi = 0; yi < ys.Length; yi++)
+				for (var xi = 0; xi < xs.Length; xi++)
+				{
+					points[xi + yi * xs.Length] = new PointF((float)(ra() + xs[xi]), (float)(ra() + ys[yi]));
+				}
+			var ss = GridSmoothing.Smooth(points , new Size(xs.Length, ys.Length));
+			bp.Draw().Fill(Color.Black)
+				.Color(Color.White)
+				//.DrawPoint(points, 5)
+				.Color(Color.Red)
+				.DrawPoint(ss, 5)
+				.Finish();
+
+			window.RenderFrame();
+			bp.Draw().Fill(Color.Black)
+				.DrawPoint(ss, 5).Finish();
+
 			window.RenderFrame();
 			while (true)
 			{

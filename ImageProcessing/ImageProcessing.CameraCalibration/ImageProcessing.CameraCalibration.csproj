@@ -84,6 +84,7 @@
       <DependentUpon>StructuredLightWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Utils\Camera.cs" />
+    <Compile Include="Utils\GridSmoothing.cs" />
     <Compile Include="Utils\Projector.cs" />
     <Compile Include="Utils\ProjectorForm.cs">
       <SubType>Form</SubType>
