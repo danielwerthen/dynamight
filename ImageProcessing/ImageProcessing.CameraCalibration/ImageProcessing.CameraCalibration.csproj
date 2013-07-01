@@ -77,7 +77,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="DualCalibrator.cs" />
+    <Compile Include="StereoCalibration.cs" />
     <Compile Include="PhaseModulation.cs" />
     <Compile Include="StructuredLightInterpreter.cs" />
     <Compile Include="StructuredLightWindow.xaml.cs">

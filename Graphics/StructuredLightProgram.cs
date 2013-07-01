@@ -50,7 +50,7 @@ void main(void)
   else if (ALGORITM == 1)
   {
     i = (cos((dt - 0.5 / float(STEP)) * PI * float(STEP) + PHASE) + 1.0) / 3.0 + 1.0 / 3.0;
-    i = (cos(dt * PI * float(STEP) + PHASE) + 1.0) / 2.0;
+    i = (cos(dt * PI * float(STEP) + PHASE) + 1.0) / 3.0 + 1.0 / 3.0;
   }
   else if (ALGORITM == 2)
   {

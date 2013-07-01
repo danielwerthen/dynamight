@@ -27,11 +27,11 @@ namespace CalibrationTests
             var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
             window.Load();
             window.ResizeGraphics();
-            DualCalibrator.DebugWindow = window;
+            StereoCalibration.DebugWindow = window;
             Projector proj = new Projector();
             Camera camera = new Camera(KinectSensor.KinectSensors.First(row => row.Status == KinectStatus.Connected), ColorImageFormat.RgbResolution1280x960Fps12);
             
-            DualCalibrator.Test(proj, camera);
+            StereoCalibration.Test(proj, camera);
             //proj.Renderer.RenderBitmap(bitm);
             //BitmapWindow window = BitmapWindow.Make();
             
