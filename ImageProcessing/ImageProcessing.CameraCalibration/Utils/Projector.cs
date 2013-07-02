@@ -62,6 +62,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             window.RenderFrame();
         }
 
+        public void DrawGrey(int step, bool vertical, Color color)
+        {
+            window.SetProgram(slp);
+            slp.SetGrey(step, vertical, color);
+            window.RenderFrame();
+        }
+
         public void DrawScanLine(int Step, int Length, bool Rows)
         {
             //QuickDraw.Start(bitmap)

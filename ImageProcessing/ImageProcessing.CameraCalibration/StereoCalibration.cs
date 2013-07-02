@@ -242,11 +242,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     var mini = nolight[(int)c.Y, (int)c.X].Intensity;
                     var maxi = fulllight[(int)c.Y, (int)c.X].Intensity;
                     var i1 = pics[0][(int)c.Y, (int)c.X].Intensity;
-                    i1 = (i1 - mini) / (i1 - maxi);
+                    i1 = (i1 - mini) / (maxi - mini);
                     var i2 = pics[1][(int)c.Y, (int)c.X].Intensity;
-                    i2 = (i2 - mini) / (i2 - maxi);
+                    i2 = (i2 - mini) / (maxi - mini);
                     var i3 = pics[2][(int)c.Y, (int)c.X].Intensity;
-                    i3 = (i3 - mini) / (i3 - maxi);
+                    i3 = (i3 - mini) / (maxi - mini);
                     return PhaseModulation.IntensityToPhase(i1, i2, i3);
                 }).ToArray();
             };
@@ -375,7 +375,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 cameraCorners = DetectCornersRB(nolight, pattern);
 
             } while (cameraCorners == null);
-                
+
             if (DebugWindow != null)
             {
                 QuickDraw.Start(withCorners)
@@ -385,6 +385,39 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 DebugWindow.DrawBitmap(withCorners);
             }
 
+            if (false)
+            {
+                projector.DrawBackground(Color.Black);
+                var noi = new Image<Bgr, byte>(camera.TakePicture(5));
+                projector.DrawBackground(Color.FromArgb(0, 255, 0));
+                var fulli = new Image<Bgr, byte>(camera.TakePicture(5));
+                projector.DrawPhaseMod(4, 0f, true, Color.FromArgb(0, 255, 0));
+                var img = new Image<Bgr, byte>(camera.TakePicture(5));
+
+                var max = (fulli - noi).Split()[1];
+                var cur = (img - noi).Split()[1];
+                var map = new Bitmap(cur.Width, cur.Height);
+                DebugWindow.DrawBitmap(max.Bitmap);
+                DebugWindow.DrawBitmap(cur.Bitmap);
+                using (var fast = new FastBitmap(map))
+                {
+                    for (int y = 0; y < cur.Height; y++)
+                    {
+                        for (int x = 0; x < cur.Width; x++)
+                        {
+                            var ii = cur[(int)y, (int)x].Intensity / max[(int)y, (int)x].Intensity;
+                            if (ii > 1)
+                                ii = 1;
+                            var i = (byte)(ii * 255);
+                            fast[x, y] = Color.FromArgb(i, i, i);
+                        }
+                    }
+                }
+                if (DebugWindow != null)
+                    DebugWindow.DrawBitmap(map);
+            }
+
+
             //Determine rough checkerboard coordinates in projector space with graycode or binary structured light
                 
             var rough = DetectRoughCorners(cameraCorners, projector, camera, Color.Green);
@@ -393,6 +426,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             //var phine = PhineTune(projector, camera, cameraCorners, rough, 32);
             //var phine2 = PhineTune(projector, camera, cameraCorners, rough, 64);
             //var phine3 = PhineTune(projector, camera, cameraCorners, phine2, 128);
+            
             projector.DrawPoints(rough, 5);
 
             //L => R, U => B
@@ -404,16 +438,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     r2[x + y * pattern.Width] = rough[x + (pattern.Height - 1 - y) * pattern.Width];
                 }
             }
-            var smoothed = GridSmoothing.Smooth(r2, pattern);
-            smoothed = GridSmoothing.Smooth(smoothed, pattern);
-            projector.DrawPoints(smoothed, 5);
+            //var smoothed = GridSmoothing.Smooth(r2, pattern);
+            //var smoothed2 = GridSmoothing.Smooth(smoothed, pattern);
+            //projector.DrawPoints(smoothed, 5);
+            //projector.DrawPoints(smoothed2, 5);
             //var outline = DetermineBounds(rough, projector.bitmap.Width, projector.bitmap.Height);
             //projector.SetBounds(outline);
 
             //Determine corners in projector space
             //var projectorCorners = DetectProjectorCorners(nolight, cameraCorners, projOutline, projector, camera);
             //Save corners in camera and projector space and store along side global coordinates that matches current checkerboard
-            var data = new CalibrationData() { CameraCorners = cameraCorners, ProjectorCorners = smoothed };
+            var data = new CalibrationData() { CameraCorners = cameraCorners, ProjectorCorners = rough };
             return data;
         }
 
@@ -467,8 +502,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             projector.DrawBackground(Color.Black);
             var nolight = camera.TakePicture(10);
 
-            var projected = BinarySL(projector, camera, cameraCorners, nolight, fullColor, false)
-                .Zip(BinarySL(projector, camera, cameraCorners, nolight, fullColor, true), (y,x) => new PointF((float)x, (float)y))
+            var projected = GreySL(projector, camera, cameraCorners, nolight, fullColor, false)
+                .Zip(GreySL(projector, camera, cameraCorners, nolight, fullColor, true), (y,x) => new PointF((float)x, (float)y))
                 .ToArray();
             return projected;
         }
@@ -486,9 +521,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 d.MinMax(out min, out max, out minp, out maxp);
                 var thresh = (max.Max() - min.Min()) * 0.05 + min.Min();
                 if (step < 5)
-                    d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(4).Dilate(8).Erode(4);
+                    d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(4).Dilate(8).Erode(8).Dilate(4);
                 else
-                    d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(2).Dilate(4).Erode(2);
+                    d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(2).Dilate(4).Erode(4).Dilate(2);
                 if (DebugWindow != null)
                     DebugWindow.DrawBitmap(d.Bitmap);
                 return (corner) =>
@@ -496,6 +531,74 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     return d[(int)corner.Y, (int)corner.X].Intensity > 0;
                 };
             };
+        }
+
+
+        public static double[] GreySL(Projector projector, Camera camera, PointF[] corners, Bitmap nolight, Color fullColor, bool vertical)
+        {
+            uint[] horizontal = new uint[corners.Length];
+            int max = (int)Math.Floor(Math.Log((vertical ? projector.bitmap.Width : projector.bitmap.Height), 2)) + 1;
+            int subdivisions = 1;
+            var nol = Classifier(nolight);
+            for (var step = 0; step < max - 3; step++)
+            {
+                projector.DrawBackground(Color.Black);
+                camera.TakePicture(5).Dispose();
+                projector.DrawGrey(step, vertical, fullColor);
+                var light = camera.TakePicture(2);
+                var classifier = nol(light, step);
+                int idx = 0;
+                Bitmap withCorners = null;
+                foreach (var point in corners)
+                {
+                    var hit = classifier(point);
+                    var h = horizontal[idx];
+                    h = h << 1;
+                    h = h | (hit ? (uint)1 : (uint)0);
+                    horizontal[idx] = h;
+                    idx++;
+                    if (DebugWindow != null)
+                    {
+                        withCorners = light;
+                        QuickDraw.Start(withCorners)
+                            .Color(hit ? Color.Gray : Color.White)
+                            .DrawPoint(point.X, point.Y, 5)
+                            .Finish();
+                    }
+                }
+                if (DebugWindow != null)
+                    DebugWindow.DrawBitmap(withCorners);
+                light.Dispose();
+                subdivisions++;
+            }
+            
+            var result = horizontal
+                .Select(h =>
+                    {
+                        uint num = h;
+                        uint mask;
+                        for (mask = num >> 1; mask != 0; mask = mask >> 1)
+                        {
+                            num = num ^ mask;
+                        }
+                        return num;
+                    })
+                .Select(row => (1 - (double)row / Math.Pow(2, max - 3)) * (vertical ? projector.bitmap.Width : projector.bitmap.Height)).ToArray();
+            using (var bitmap = new Bitmap(projector.bitmap.Width, projector.bitmap.Height))
+            {
+                using (var fast = new FastBitmap(bitmap))
+                {
+                    for (var x = 0; x < bitmap.Width; x++)
+                        for (var y = 0; y < bitmap.Height; y++)
+                            if (result.Contains(vertical ? x : y))
+                                fast[x, y] = Color.FromArgb(255, 255, 255, 255);
+                            else
+                                fast[x, y] = Color.FromArgb(255, 0, 0, 0);
+
+                }
+                projector.DrawBitmap(bitmap);
+            }
+            return result;
         }
 
         public static double[] BinarySL(Projector projector, Camera camera, PointF[] corners, Bitmap nolight, Color fullColor, bool vertical)

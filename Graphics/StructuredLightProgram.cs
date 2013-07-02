@@ -29,6 +29,25 @@ uniform int STEP;
 uniform float PHASE;
 uniform int ALGORITM;
 
+float grey(float dx, int subdiv)
+{
+  float dt = dx;
+  while(subdiv > 0)
+  {
+
+    if (dt < 0.5)
+        dt = 1. - (dt * 2.);
+    else
+        dt = ((dt - 0.5) * 2.);
+    subdiv--;
+  }
+
+      if (dt < 0.5)
+        return 1.;
+      else
+       return 0.;
+}
+
 void main(void)
 {
   float PI = 3.14159265358979323846264;
@@ -56,6 +75,11 @@ void main(void)
   {
     i = float(int(floor(dt * pow(2.0, float(STEP)))) % 2);
   }
+  else if (ALGORITM == 3)
+  {
+    i = grey(dt, STEP);
+  }
+
   gl_FragColor = vec4(i * COLOR.x, i * COLOR.y, i * COLOR.z, COLOR.w);
 }
 ";
@@ -98,6 +122,14 @@ void main(void)
         public void SetBinary(int step, bool vertical, Color color)
         {
             this.algoritm = 2;
+            this.color = color;
+            this.step = step;
+            this.vertical = vertical ? 1 : 0;
+        }
+
+        public void SetGrey(int step, bool vertical, Color color)
+        {
+            this.algoritm = 3;
             this.color = color;
             this.step = step;
             this.vertical = vertical ? 1 : 0;

@@ -192,7 +192,73 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 			};
 		}
 
-		public static PointF[] Smooth(PointF[] points, Size pattern)
+        public static PointF[] Smooth2(PointF[] points, Size pattern)
+        {
+            var pointVectors = points.Select(row => new DenseVector(new double[] { row.X, row.Y })).ToArray();
+            var data = new GridSmoothing(pointVectors, pattern);
+            var grid = Generate(pattern);
+            var allRects = grid.Select(point => new GridSquare(point, data));
+
+            var f1s = new Vector<double>[pattern.Height];
+            for (int i = 0; i < pattern.Height; i++)
+            {
+                var all = allRects.Where(row => row.ID.UL.Y == i)
+                    .Select(rect => rect.UR - rect.UL).Select(vec => vec.Normalize(1))
+                    .Concat(allRects.Where(row => row.ID.BL.Y == i)
+                        .Select(rect => rect.BR - rect.BL).Select(vec => vec.Normalize(1)))
+                    .ToArray();
+                f1s[i] = all.Aggregate((v1, v2) => (v1 + v2)) / all.Length;
+            }
+
+            var f2s = new Vector<double>[pattern.Width];
+            for (int i = 0; i < pattern.Width; i++)
+            {
+                var all = allRects.Where(row => row.ID.UL.X == i)
+                    .Select(rect => rect.BL - rect.UL).Select(vec => vec.Normalize(1))
+                    .Concat(allRects.Where(row => row.ID.UR.X == i)
+                        .Select(rect => rect.BR - rect.UR).Select(vec => vec.Normalize(1)))
+                    .ToArray();
+                f2s[i] = all.Aggregate((v1, v2) => (v1 + v2)) / all.Length;
+            }
+
+            var xs = new int[pattern.Width];
+            for (int i = 0; i < pattern.Width; i++) xs[i] = i;
+            var ys = new int[pattern.Height];
+            for (int i = 0; i < pattern.Height; i++) ys[i] = i;
+
+            var result = new List<Vector<double>>[pattern.Width * pattern.Height];
+            foreach (var rect in allRects)
+            {
+                var center = (rect.UL + rect.UR + rect.BL + rect.BR) / 4;
+                var ur2ul = (rect.UR - rect.UL).Norm(1);
+                var br2bl = (rect.BR - rect.BL).Norm(1);
+                var bl2ul = (rect.BL - rect.UL).Norm(1);
+                var br2ur = (rect.BR - rect.UR).Norm(1);
+                Vector<double> p1, p2, p3, p4;
+                if (result[rect.ID.UL.X + rect.ID.UL.Y * pattern.Width] == null)
+                    result[rect.ID.UL.X + rect.ID.UL.Y * pattern.Width] = new List<Vector<double>>();
+                result[rect.ID.UL.X + rect.ID.UL.Y * pattern.Width].Add(p1 = center - ur2ul * f1s[rect.ID.UL.Y] / 2 - bl2ul * f2s[rect.ID.UL.X] / 2);
+
+                if (result[rect.ID.UR.X + rect.ID.UR.Y * pattern.Width] == null)
+                    result[rect.ID.UR.X + rect.ID.UR.Y * pattern.Width] = new List<Vector<double>>();
+                result[rect.ID.UR.X + rect.ID.UR.Y * pattern.Width].Add(p2 = center + ur2ul * f1s[rect.ID.UR.Y] / 2 - br2ur * f2s[rect.ID.UR.X] / 2);
+
+                if (result[rect.ID.BL.X + rect.ID.BL.Y * pattern.Width] == null)
+                    result[rect.ID.BL.X + rect.ID.BL.Y * pattern.Width] = new List<Vector<double>>();
+                result[rect.ID.BL.X + rect.ID.BL.Y * pattern.Width].Add(p3 = center - br2bl * f1s[rect.ID.BL.Y] / 2 + bl2ul * f2s[rect.ID.BL.X] / 2);
+
+
+                if (result[rect.ID.BR.X + rect.ID.BR.Y * pattern.Width] == null)
+                    result[rect.ID.BR.X + rect.ID.BR.Y * pattern.Width] = new List<Vector<double>>();
+                result[rect.ID.BR.X + rect.ID.BR.Y * pattern.Width].Add(p4 = center + br2bl * f1s[rect.ID.BR.Y] / 2 + br2ur * f2s[rect.ID.BR.X] / 2);
+            }
+
+            return result.Select(per => per.Aggregate((v1, v2) => v1 + v2) / per.Count)
+                .Select(v => new PointF((float)v[0], (float)v[1]))
+                .ToArray();
+        }
+
+        public static PointF[] Smooth(PointF[] points, Size pattern)
 		{
 			var pointVectors = points.Select(row => new DenseVector(new double[] { row.X, row.Y })).ToArray();
 			var data = new GridSmoothing(pointVectors, pattern);

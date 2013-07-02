@@ -88,14 +88,14 @@ namespace Dynamight.App
             return objectOut;
         }
 
-        static StereoCalibrationResult Calibrate(Camera camera, Projector projector)
+        static StereoCalibrationResult Calibrate(Camera camera, Projector projector, bool reload = false)
         {
             string filename = "calibrationresult.xml";
             while (true)
             {
-                if (File.Exists(filename))
+                if (File.Exists(filename) && !reload)
                     return DeSerializeObject<StereoCalibrationResult>(filename);
-                var result = StereoCalibration.Calibrate(projector, camera, new System.Drawing.Size(7, 4), 0.05f, 1);
+                var result = StereoCalibration.Calibrate(projector, camera, new System.Drawing.Size(7, 4), 0.05f, 10);
                 SerializeObject(result, filename);
                 return result;
                 Console.WriteLine("Proceed? (y/n)");
@@ -107,11 +107,16 @@ namespace Dynamight.App
 
         static void Main(string[] args)
         {
+            var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
+            var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
+            window.Load();
+            window.ResizeGraphics();
+            StereoCalibration.DebugWindow = window;
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
             Projector projector = new Projector();
-            var calib = Calibrate(camera, projector);
+            var calib = Calibrate(camera, projector, true);
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
             sensor.SkeletonStream.Enable();
