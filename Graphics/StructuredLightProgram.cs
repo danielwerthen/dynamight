@@ -26,6 +26,7 @@ uniform int WIDTH;
 uniform int HEIGHT;
 uniform int VERTICAL;
 uniform int STEP;
+uniform int OFFSET;
 uniform float PHASE;
 uniform int ALGORITM;
 
@@ -51,7 +52,7 @@ float grey(float dx, int subdiv)
 void main(void)
 {
   float PI = 3.14159265358979323846264;
-	vec2 coord = vec2(gl_FragCoord.x / float(WIDTH),1. - gl_FragCoord.y / float(HEIGHT));
+	vec2 coord = vec2((gl_FragCoord.x + float(OFFSET)) / float(WIDTH),1. - (gl_FragCoord.y + float(OFFSET)) / float(HEIGHT));
   float dt = 0.0;
   if (VERTICAL > 0)
 	{
@@ -109,6 +110,7 @@ void main(void)
 		float phase;
 		Color color;
         int algoritm;
+        int offset;
 
 		public void SetPhaseMod(int step, float phase, bool vertical, Color color)
 		{
@@ -117,6 +119,7 @@ void main(void)
 			this.vertical = vertical ? 1 : 0;
 			this.color = color;
             this.algoritm = 1;
+            this.offset = 0;
 		}
 
         public void SetBinary(int step, bool vertical, Color color)
@@ -125,20 +128,23 @@ void main(void)
             this.color = color;
             this.step = step;
             this.vertical = vertical ? 1 : 0;
+            this.offset = 0;
         }
 
-        public void SetGrey(int step, bool vertical, Color color)
+        public void SetGrey(int step, bool vertical, int offset, Color color)
         {
             this.algoritm = 3;
             this.color = color;
             this.step = step;
             this.vertical = vertical ? 1 : 0;
+            this.offset = offset;
         }
 
         public void SetIdentity(Color color)
         {
             this.algoritm = 0;
             this.color = color;
+            this.offset = 0;
         }
 
 		public override void Render()
@@ -154,6 +160,7 @@ void main(void)
 			GL.Uniform1(GL.GetUniformLocation(program, "VERTICAL"), vertical);
 			GL.Uniform1(GL.GetUniformLocation(program, "PHASE"), phase);
 			GL.Uniform4(GL.GetUniformLocation(program, "COLOR"), new OpenTK.Vector4(color.R / 255.0f, color.G / 255.0f, color.B / 255.0f, 1.0f));
+            GL.Uniform1(GL.GetUniformLocation(program, "OFFSET"), offset);
 
 			GL.Begin(BeginMode.Quads);
 

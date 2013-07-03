@@ -51,9 +51,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             thread.Start();
         }
 
+        KinectSensor sensor;
         public Camera(KinectSensor sensor, Microsoft.Kinect.ColorImageFormat imageFormat)
 		{
 			cancellation = new CancellationTokenSource();
+            this.sensor = sensor;
             thread = new Thread(() =>
             {
                 var token = cancellation.Token;
@@ -62,11 +64,12 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                     sensor.Start();
                 EventHandler<ColorImageFrameReadyEventArgs> onFrame = (o, e) =>
                     {
+                        var frame = HandleFrame(e);
                         lock (syncRoot)
                         {
                             if (lastBitmap != null)
                                 lastBitmap.Dispose();
-                            lastBitmap = HandleFrame(e);
+                            lastBitmap = frame;
                             Monitor.Pulse(syncRoot);
                         }
                     };
@@ -78,11 +81,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                         sensor.ColorFrameReady -= onFrame;
                         sensor.Stop();
                     }
-                }
+                 }
             });
 
 			thread.Start();
 		}
+
+        private void Awake()
+        {
+            lock (syncRoot)
+                Monitor.PulseAll(syncRoot);
+        }
 
         public Bitmap TakePicture(int discardCount = 0)
 		{
@@ -124,17 +133,26 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
 		private Bitmap _takePicture()
 		{
-			lock (syncRoot)
-			{
-				Monitor.Wait(syncRoot);
-				if (lastBitmap != null)
-				{
-					var temp = lastBitmap;
-					lastBitmap = null;
-					return temp;
-				}
-			}
-			return null;
+            while (true)
+            {
+                lock (syncRoot)
+                {
+                    if (Monitor.Wait(syncRoot, 2000))
+                    {
+                        if (lastBitmap != null)
+                        {
+                            var temp = lastBitmap;
+                            lastBitmap = null;
+                            return temp;
+                        }
+                    }
+
+                }
+                this.sensor.Stop();
+                while (this.sensor.Status != KinectStatus.Connected)
+                    Thread.Sleep(2000);
+                this.sensor.Start();
+            }
 		}
 
 		public Size Size

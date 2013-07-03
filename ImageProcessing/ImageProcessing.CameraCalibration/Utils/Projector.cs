@@ -62,10 +62,10 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             window.RenderFrame();
         }
 
-        public void DrawGrey(int step, bool vertical, Color color)
+        public void DrawGrey(int step, bool vertical, int offset, Color color)
         {
             window.SetProgram(slp);
-            slp.SetGrey(step, vertical, color);
+            slp.SetGrey(step, vertical, offset, color);
             window.RenderFrame();
         }
 

@@ -55,8 +55,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(2).Dilate(3).Erode(1);
                     DebugWindow.DrawBitmap(d.Bitmap);
                 }
-            var test = GetLocalCorners(projector, camera, new Size(7,4));
-
         }
 
         public static MCvPoint3D32f[] GenerateCheckerBoard(Size pattern, float checkerBoardSize)
@@ -72,26 +70,59 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return globalPoints;
         }
 
-        public static StereoCalibrationResult Calibrate(Projector projector, Camera camera, Size pattern, float checkerBoardSize, int passes = 1)
+        public static bool Different(PointF[] a, PointF[] b, float thresh = 400)
+        {
+            if (b == null || a == null)
+                return true;
+            var diff = a.Zip(b, (ap, bp) => Math.Abs(ap.X - bp.X) + Math.Abs(ap.Y - bp.Y)).Sum();
+            return diff > thresh;
+        }
+
+        public static void CalibrateCamera(Projector projector, Camera camera, Size pattern, float checkerBoardSize)
+        {
+            var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
+            var cameraCorners = GetCameraCorners(projector, camera, pattern);
+            var intrinsic = new IntrinsicCameraParameters();
+            intrinsic.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1}, { 0, 0, 1 } });
+            ExtrinsicCameraParameters[] cameraExtrinsicsArray;
+            Emgu.CV.CameraCalibration.CalibrateCamera(new MCvPoint3D32f[][] { globals }, new PointF[][] { cameraCorners }, camera.Size, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO, out cameraExtrinsicsArray);
+            var extrinsic = cameraExtrinsicsArray.First();
+
+            var test = Emgu.CV.CameraCalibration.ProjectPoints(new MCvPoint3D32f[] { new MCvPoint3D32f(0, 0, 0),
+            new MCvPoint3D32f(0.1f, 0, 0),
+            new MCvPoint3D32f(0, 0.1f, 0),
+            new MCvPoint3D32f(0, 0, 0.1f)}, extrinsic, intrinsic);
+            var bitmap = camera.TakePicture(0);
+            QuickDraw.Start(bitmap).DrawPoint(test, 5).Finish();
+            DebugWindow.DrawBitmap(bitmap);
+        }
+
+        public static StereoCalibrationResult Calibrate(Projector projector, Camera camera, Size pattern, float checkerBoardSize, int passes = 1, Action<int> perPass = null)
         {
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
             var datas = new List<CalibrationData>();
 
+            PointF[] corners;
             for (int i = 0; i < passes; i++)
             {
-                datas.Add(GetLocalCorners(projector, camera, pattern));
+                if (perPass != null && i > 0)
+                    perPass(i - 1);
+                corners = GetCameraCorners(projector, camera, pattern);
+                datas.Add(GetLocalCorners(corners, projector, camera, pattern));
             }
 
             var globalCorners = datas.Select(row => globals).ToArray();
             var cameraCorners = datas.Select(row => row.CameraCorners).ToArray();
             var projectorCorners = datas.Select(row => row.ProjectorCorners).ToArray();
-            
+
             IntrinsicCameraParameters cameraIntrinsics = new IntrinsicCameraParameters();
+            cameraIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });
             ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, camera.Size, cameraIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, camera.Size, cameraIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO, out cameraExtrinsicsArray);
             
 
             IntrinsicCameraParameters projectorIntrinsics = new IntrinsicCameraParameters();
+            projectorIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });
             ExtrinsicCameraParameters[] projectorExtrinsicsArray;
             Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, projectorCorners, projector.Size, projectorIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projectorExtrinsicsArray);
 
@@ -360,7 +391,12 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         #endregion
 
-        public static CalibrationData GetLocalCorners(Projector projector, Camera camera, Size pattern)
+        public static PointF[] SortLRUB(PointF[] points)
+        {
+            return points.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
+        }
+
+        public static PointF[] GetCameraCorners(Projector projector, Camera camera, Size pattern)
         {
 
             //Take pic of checkerboard with no proj light
@@ -370,7 +406,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             Bitmap withCorners;
             do
             {
-                var nolight = camera.TakePicture(5);
+
+                var nolight = camera.TakePicture(2);
                 withCorners = camera.TakePicture();
                 cameraCorners = DetectCornersRB(nolight, pattern);
 
@@ -384,6 +421,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     .Finish();
                 DebugWindow.DrawBitmap(withCorners);
             }
+            return cameraCorners;
+        }
+
+        public static CalibrationData GetLocalCorners(PointF[] cameraCorners, Projector projector, Camera camera, Size pattern)
+        {
 
             if (false)
             {
@@ -429,21 +471,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             
             projector.DrawPoints(rough, 5);
 
-            //L => R, U => B
-            var r2 = new PointF[rough.Length];
-            for (var x = 0; x < pattern.Width; x++)
-            {
-                for (var y = 0; y < pattern.Height; y++)
-                {
-                    r2[x + y * pattern.Width] = rough[x + (pattern.Height - 1 - y) * pattern.Width];
-                }
-            }
-            //var smoothed = GridSmoothing.Smooth(r2, pattern);
-            //var smoothed2 = GridSmoothing.Smooth(smoothed, pattern);
-            //projector.DrawPoints(smoothed, 5);
-            //projector.DrawPoints(smoothed2, 5);
-            //var outline = DetermineBounds(rough, projector.bitmap.Width, projector.bitmap.Height);
-            //projector.SetBounds(outline);
+
+
 
             //Determine corners in projector space
             //var projectorCorners = DetectProjectorCorners(nolight, cameraCorners, projOutline, projector, camera);
@@ -466,7 +495,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         public static PointF[] DetectCornersRB(Bitmap picture, Size patternSize)
         {
             var image = new Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte>(picture);
-            Emgu.CV.Image<Emgu.CV.Structure.Gray, byte> grayimage = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(new byte[image.Height, image.Width, 1]);
+            Emgu.CV.Image<Emgu.CV.Structure.Gray, byte> gray = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>(new byte[image.Height, image.Width, 1]);
             for (var y = 0; y < image.Height; y++)
             {
                 for (var x = 0; x < image.Width; x++)
@@ -476,17 +505,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     var g = image[y, x].Green;
                     var rd = Distance(new double[] { r, b, g }, new double[] { 255, 0, 0 });
                     if (rd < 175)
-                        grayimage[y, x] = new Emgu.CV.Structure.Gray(0);
+                        gray[y, x] = new Emgu.CV.Structure.Gray(0);
                     else
-                        grayimage[y, x] = new Emgu.CV.Structure.Gray(255);
+                        gray[y, x] = new Emgu.CV.Structure.Gray(255);
                 }
             }
 
-            var corners = Emgu.CV.CameraCalibration.FindChessboardCorners(grayimage, patternSize, Emgu.CV.CvEnum.CALIB_CB_TYPE.ADAPTIVE_THRESH);
+            var corners = Emgu.CV.CameraCalibration.FindChessboardCorners(gray, patternSize, Emgu.CV.CvEnum.CALIB_CB_TYPE.ADAPTIVE_THRESH);
             if (corners == null)
                 return null;
             var cc = new PointF[][] { corners };
-            grayimage.FindCornerSubPix(cc, new System.Drawing.Size(11, 11), new System.Drawing.Size(-1, -1), new Emgu.CV.Structure.MCvTermCriteria(30, 0.1));
+            gray.FindCornerSubPix(cc, new System.Drawing.Size(11, 11), new System.Drawing.Size(-1, -1), new Emgu.CV.Structure.MCvTermCriteria(30, 0.1));
             return corners;
         }
 
@@ -501,11 +530,21 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         {
             projector.DrawBackground(Color.Black);
             var nolight = camera.TakePicture(10);
-
-            var projected = GreySL(projector, camera, cameraCorners, nolight, fullColor, false)
-                .Zip(GreySL(projector, camera, cameraCorners, nolight, fullColor, true), (y,x) => new PointF((float)x, (float)y))
+            var ids = new int[cameraCorners.Length];
+            for (var i = 0; i < cameraCorners.Length; i++) ids[i] = i;
+            var points = new List<MathNet.Numerics.LinearAlgebra.Double.DenseVector[]>();
+            for (int i = 0; i < 10; i += 3)
+            {
+                var projected = GreySL(projector, camera, cameraCorners, nolight, fullColor, false, i)
+                    .Zip(GreySL(projector, camera, cameraCorners, nolight, fullColor, true, i), 
+                    (y, x) => new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { x - i, y - i }))
+                    .ToArray();
+                points.Add(projected);
+            }
+            return ids.Select(i => points.Select(row => row[i])
+                .Aggregate((v1, v2) => v1 + v2) / points.Count)
+                .Select(r => new PointF((float)r[0], (float)r[1]))
                 .ToArray();
-            return projected;
         }
 
         public static Func<Bitmap, int, Func<PointF, bool>> Classifier(Bitmap nolight)
@@ -514,8 +553,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return (img, step) =>
             {
                 var fu = new Image<Bgr, byte>(img);
-                var t = new Image<Bgr, byte>(fu.Width, fu.Height);
-                var d = (t + fu - no).Split()[1];
+                var d = (fu - no).Split()[1];
                 double[] min, max;
                 Point[] minp, maxp;
                 d.MinMax(out min, out max, out minp, out maxp);
@@ -525,7 +563,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 else
                     d = d.ThresholdBinary(new Gray(thresh), new Gray(255)).Erode(2).Dilate(4).Erode(4).Dilate(2);
                 if (DebugWindow != null)
+                {
                     DebugWindow.DrawBitmap(d.Bitmap);
+                }
                 return (corner) =>
                 {
                     return d[(int)corner.Y, (int)corner.X].Intensity > 0;
@@ -534,7 +574,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         }
 
 
-        public static double[] GreySL(Projector projector, Camera camera, PointF[] corners, Bitmap nolight, Color fullColor, bool vertical)
+        public static double[] GreySL(Projector projector, Camera camera, PointF[] corners, Bitmap nolight, Color fullColor, bool vertical, int offset)
         {
             uint[] horizontal = new uint[corners.Length];
             int max = (int)Math.Floor(Math.Log((vertical ? projector.bitmap.Width : projector.bitmap.Height), 2)) + 1;
@@ -543,8 +583,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             for (var step = 0; step < max - 3; step++)
             {
                 projector.DrawBackground(Color.Black);
-                camera.TakePicture(5).Dispose();
-                projector.DrawGrey(step, vertical, fullColor);
+                camera.TakePicture(2).Dispose();
+                projector.DrawGrey(step, vertical, offset, fullColor);
                 var light = camera.TakePicture(2);
                 var classifier = nol(light, step);
                 int idx = 0;
@@ -584,20 +624,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                         return num;
                     })
                 .Select(row => (1 - (double)row / Math.Pow(2, max - 3)) * (vertical ? projector.bitmap.Width : projector.bitmap.Height)).ToArray();
-            using (var bitmap = new Bitmap(projector.bitmap.Width, projector.bitmap.Height))
-            {
-                using (var fast = new FastBitmap(bitmap))
-                {
-                    for (var x = 0; x < bitmap.Width; x++)
-                        for (var y = 0; y < bitmap.Height; y++)
-                            if (result.Contains(vertical ? x : y))
-                                fast[x, y] = Color.FromArgb(255, 255, 255, 255);
-                            else
-                                fast[x, y] = Color.FromArgb(255, 0, 0, 0);
-
-                }
-                projector.DrawBitmap(bitmap);
-            }
+         
             return result;
         }
 

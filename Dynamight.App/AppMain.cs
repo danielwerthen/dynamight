@@ -4,6 +4,7 @@ using Graphics;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -95,7 +96,12 @@ namespace Dynamight.App
             {
                 if (File.Exists(filename) && !reload)
                     return DeSerializeObject<StereoCalibrationResult>(filename);
-                var result = StereoCalibration.Calibrate(projector, camera, new System.Drawing.Size(7, 4), 0.05f, 10);
+                var result = StereoCalibration.Calibrate(projector, camera, new System.Drawing.Size(7, 4), 0.05f, 3,
+                    (pass) =>
+                    {
+                        Console.WriteLine("Pass: " + pass + " done. Adjust the board and press enter to continue.");
+                        Console.ReadLine();
+                    });
                 SerializeObject(result, filename);
                 return result;
                 Console.WriteLine("Proceed? (y/n)");
@@ -116,7 +122,12 @@ namespace Dynamight.App
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
             Projector projector = new Projector();
-            var calib = Calibrate(camera, projector, true);
+
+            
+            //StereoCalibration.CalibrateCamera(projector, camera, new System.Drawing.Size(7, 4), 0.05f);
+
+
+            var calib = Calibrate(camera, projector, false);
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
             sensor.SkeletonStream.Enable();
@@ -124,13 +135,17 @@ namespace Dynamight.App
             projector.DrawBackground(System.Drawing.Color.Black);
             var peas = new float[][] {
                 new float[] { 0f, 0f, 0f },
-                new float[] { 1f, 0f, 0f },
-                new float[] { 0f, 1f, 0f },
-                new float[] { 0f, 0f, 1f },
+                new float[] { 0.1f, 0f, 0f },
+                new float[] { 0f, 0.1f, 0f },
+                new float[] { 0f, 0f, 0.1f },
             };
             var tpe = calib.TransformG2P(peas);
             var tpp = calib.TransformG2C(peas);
-            projector.DrawPoints(tpe, 5);
+            var test = tpe.Select(row => new PointF(-projector.Size.Width +row.X, -row.Y)).ToArray();
+            var cp = camera.TakePicture(0);
+            QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
+            window.DrawBitmap(cp);
+            projector.DrawPoints(test, 5);
             while (sensor.IsRunning)
             {
                 var skeletons = new Skeleton[0];
