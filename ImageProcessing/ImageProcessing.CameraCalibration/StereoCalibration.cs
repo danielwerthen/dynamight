@@ -97,23 +97,68 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             DebugWindow.DrawBitmap(bitmap);
         }
 
-        public static StereoCalibrationResult Calibrate(Projector projector, Camera camera, Size pattern, float checkerBoardSize, int passes = 1, Action<int> perPass = null)
+        public static PointF[] FlipX(PointF[] arr, Size size)
         {
-            var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
+            var res = new PointF[arr.Length];
+            for (var y = 0; y < size.Height; y++)
+                for (var x = 0; x < size.Width; x++)
+                    res[(size.Width -1- x) + y * size.Width] = arr[x + y * size.Width];
+            return res;
+        }
+
+        public static CalibrationData[] GatherData(Projector projector, Camera camera, Size pattern, int passes = 1, Func<int, bool> perPass = null)
+        {
             var datas = new List<CalibrationData>();
 
             PointF[] corners;
-            for (int i = 0; i < passes; i++)
+            for (int i = 0; i < passes; i+= 0)
             {
-                if (perPass != null && i > 0)
-                    perPass(i - 1);
                 corners = GetCameraCorners(projector, camera, pattern);
-                datas.Add(GetLocalCorners(corners, projector, camera, pattern));
+                var data = GetLocalCorners(corners, projector, camera, pattern);
+                if (perPass != null && perPass(i))
+                {
+                    datas.Add(data);
+                    i++;
+                }
             }
+            return datas.ToArray();
+        }
+
+        public static PointF[] Properize(PointF[] points, Size pattern)
+        {
+            var res = new PointF[points.Length];
+            var hs = new int[pattern.Height];
+            for (var i = 0; i < pattern.Height; i++) hs[i] = i;
+            var heighted = hs.Select(h => points.Skip(h * pattern.Width).Take(pattern.Width).OrderBy(p => p.X).ToArray())
+                .OrderBy(r => r.OrderBy(p => p.X).Select(p => p.Y).First()).ToArray();
+            for (var y = 0; y < pattern.Height; y++)
+            {
+                for (var x = 0; x < pattern.Width; x++)
+                    res[x + y * pattern.Width] = heighted[y][x];
+            }
+            return res;
+        }
+
+        public static StereoCalibrationResult Calibrate(CalibrationData[] datas, Camera camera, Projector projector, Size pattern, float checkerBoardSize)
+        {
+            var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
 
             var globalCorners = datas.Select(row => globals).ToArray();
-            var cameraCorners = datas.Select(row => row.CameraCorners).ToArray();
-            var projectorCorners = datas.Select(row => row.ProjectorCorners).ToArray();
+            var cameraCorners = datas.Select(row => Properize(row.CameraCorners, pattern)
+                )
+                .ToArray();
+            var projectorCorners = datas.Select(row => Properize(row.ProjectorCorners, pattern)).ToArray();
+
+            //for (var i = 0; i < datas.Length; i++)
+            //{
+            //    var withCorners = camera.TakePicture(0);
+            //    QuickDraw.Start(withCorners)
+            //        .Color(Color.White)
+            //        .DrawPoint(cameraCorners[i].Take(11).ToArray(), 5)
+            //        .Finish();
+            //    DebugWindow.DrawBitmap(withCorners);
+            //    projector.DrawPoints(projectorCorners[i].Take(11).ToArray(), 4);
+            //}
 
             IntrinsicCameraParameters cameraIntrinsics = new IntrinsicCameraParameters();
             cameraIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });

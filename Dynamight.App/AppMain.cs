@@ -89,19 +89,29 @@ namespace Dynamight.App
             return objectOut;
         }
 
-        static StereoCalibrationResult Calibrate(Camera camera, Projector projector, bool reload = false)
+        static StereoCalibrationResult Calibrate(Camera camera, Projector projector
+            , bool reload = true, bool reloadData = false)
         {
             string filename = "calibrationresult.xml";
+            string datafile = "calibrationdata.xml";
             while (true)
             {
                 if (File.Exists(filename) && !reload)
                     return DeSerializeObject<StereoCalibrationResult>(filename);
-                var result = StereoCalibration.Calibrate(projector, camera, new System.Drawing.Size(7, 4), 0.05f, 3,
-                    (pass) =>
-                    {
-                        Console.WriteLine("Pass: " + pass + " done. Adjust the board and press enter to continue.");
-                        Console.ReadLine();
-                    });
+                CalibrationData[] data;
+                if (File.Exists(datafile) && !reloadData)
+                    data = DeSerializeObject<CalibrationData[]>(datafile);
+                else
+                {
+                    data = StereoCalibration.GatherData(projector, camera, new Size(7, 4), 4,
+                        (pass) =>
+                        {
+                            Console.WriteLine("Pass: " + pass + " done. Reject or Approve? (r/a).");
+                            return Console.ReadLine() != "r";
+                        });
+                    SerializeObject(data, datafile);
+                }
+                var result = StereoCalibration.Calibrate(data, camera, projector, new Size(7, 4), 0.05f);
                 SerializeObject(result, filename);
                 return result;
                 Console.WriteLine("Proceed? (y/n)");
@@ -127,7 +137,7 @@ namespace Dynamight.App
             //StereoCalibration.CalibrateCamera(projector, camera, new System.Drawing.Size(7, 4), 0.05f);
 
 
-            var calib = Calibrate(camera, projector, false);
+            var calib = Calibrate(camera, projector);
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
             sensor.SkeletonStream.Enable();
@@ -141,11 +151,11 @@ namespace Dynamight.App
             };
             var tpe = calib.TransformG2P(peas);
             var tpp = calib.TransformG2C(peas);
-            var test = tpe.Select(row => new PointF(-projector.Size.Width +row.X, -row.Y)).ToArray();
+            var test = tpe.Select(row => new PointF(-row.X, -row.Y)).ToArray();
             var cp = camera.TakePicture(0);
             QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
             window.DrawBitmap(cp);
-            projector.DrawPoints(test, 5);
+            projector.DrawPoints(tpe, 5);
             while (sensor.IsRunning)
             {
                 var skeletons = new Skeleton[0];

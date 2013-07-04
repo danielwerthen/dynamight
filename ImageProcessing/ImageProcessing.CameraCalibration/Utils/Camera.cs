@@ -103,6 +103,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                 pic = _takePicture();
 
             }
+            pic.RotateFlip(RotateFlipType.RotateNoneFlipX);
             return pic;
             //Bitmap previous = null;
             //while (true)
@@ -157,7 +158,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
 		public Size Size
 		{
-			get { return new Size(1, 1); }
+            get { return new Size(sensor.ColorStream.FrameWidth, sensor.ColorStream.FrameHeight); }
 		}
 
 		static Bitmap ImageToBitmap(ColorImageFrame Image)
