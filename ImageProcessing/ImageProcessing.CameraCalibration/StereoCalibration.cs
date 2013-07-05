@@ -139,15 +139,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return res;
         }
 
-        public static StereoCalibrationResult Calibrate(CalibrationData[] datas, Camera camera, Projector projector, Size pattern, float checkerBoardSize)
+        public static StereoCalibrationResult Calibrate(CalibrationData[] data, Camera camera, Projector projector, Size pattern, float checkerBoardSize)
         {
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
-
+            var datas = data;
             var globalCorners = datas.Select(row => globals).ToArray();
             var cameraCorners = datas.Select(row => Properize(row.CameraCorners, pattern)
                 )
                 .ToArray();
-            var projectorCorners = datas.Select(row => Properize(row.ProjectorCorners, pattern)).ToArray();
+            var projectorCorners = datas.Select(row => Properize(row.ProjectorCorners, pattern)
+
+                ).ToArray();
 
             //for (var i = 0; i < datas.Length; i++)
             //{
@@ -161,29 +163,57 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             //}
 
             IntrinsicCameraParameters cameraIntrinsics = new IntrinsicCameraParameters();
-            cameraIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });
+            cameraIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] 
+            { 
+            { 4.884, 0, 0.032 }, 
+            { 0, 4.884 * 3.0 / 4.0, -0.037 }, 
+            { 0, 0, 1 } });
+            cameraIntrinsics.DistortionCoeffs = new Matrix<double>(new double[,] {
+                {-0.00575},
+                {0.000442},
+                {-0.000107},
+                {0},
+                {0},
+                {0},
+                {0},
+                {0},
+            });
             ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, camera.Size, cameraIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO, out cameraExtrinsicsArray);
-            
+            var cerr = Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners,
+                camera.Size, cameraIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_USE_INTRINSIC_GUESS,
+                out cameraExtrinsicsArray);
+
+
+
 
             IntrinsicCameraParameters projectorIntrinsics = new IntrinsicCameraParameters();
-            projectorIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });
-            ExtrinsicCameraParameters[] projectorExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, projectorCorners, projector.Size, projectorIntrinsics, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projectorExtrinsicsArray);
+            //projectorIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1 }, { 0, 0, 1 } });
+            projectorIntrinsics.IntrinsicMatrix = new Matrix<double>(new double[,] 
+            {
+                {2151.0712684548571, 0, projector.Size.Width / 2},
+                {0, 1974.541465816948, projector.Size.Height / 2},
+                {0,0,1}
+            });
 
-            Matrix<double> foundamental, essential;
-            ExtrinsicCameraParameters camera2projectorExtrinsics;
-            Emgu.CV.CameraCalibration.StereoCalibrate(globalCorners,
-                cameraCorners,
-                projectorCorners,
-                cameraIntrinsics,
-                projectorIntrinsics,
-                camera.Size,
-                Emgu.CV.CvEnum.CALIB_TYPE.DEFAULT,
-                new MCvTermCriteria(16, 0.01),
-                out camera2projectorExtrinsics,
-                out foundamental,
-                out essential);
+            ExtrinsicCameraParameters[] projectorExtrinsicsArray;
+            var perr = Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, projectorCorners,
+                projector.Size, projectorIntrinsics,
+                Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL,
+                out projectorExtrinsicsArray);
+
+            //Matrix<double> foundamental, essential;
+            //ExtrinsicCameraParameters camera2projectorExtrinsics;
+            //Emgu.CV.CameraCalibration.StereoCalibrate(globalCorners,
+            //    cameraCorners,
+            //    projectorCorners,
+            //    cameraIntrinsics,
+            //    projectorIntrinsics,
+            //    camera.Size,
+            //    Emgu.CV.CvEnum.CALIB_TYPE.DEFAULT,
+            //    new MCvTermCriteria(16, 0.01),
+            //    out camera2projectorExtrinsics,
+            //    out foundamental,
+            //    out essential);
 
             return new StereoCalibrationResult()
             {
@@ -191,7 +221,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 cameraExtrinsic = cameraExtrinsicsArray.First(),
                 projectorIntrinsic = projectorIntrinsics,
                 projectorExtrinsic = projectorExtrinsicsArray.First(),
-                cameraToProjectorExtrinsic = camera2projectorExtrinsics
+                cameraToProjectorExtrinsic = null
             };
         }
 
@@ -451,7 +481,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             Bitmap withCorners;
             do
             {
-
+                
                 var nolight = camera.TakePicture(2);
                 withCorners = camera.TakePicture();
                 cameraCorners = DetectCornersRB(nolight, pattern);
@@ -549,13 +579,12 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                     var b = image[y, x].Blue;
                     var g = image[y, x].Green;
                     var rd = Distance(new double[] { r, b, g }, new double[] { 255, 0, 0 });
-                    if (rd < 175)
+                    if (rd < 200)
                         gray[y, x] = new Emgu.CV.Structure.Gray(0);
                     else
                         gray[y, x] = new Emgu.CV.Structure.Gray(255);
                 }
             }
-
             var corners = Emgu.CV.CameraCalibration.FindChessboardCorners(gray, patternSize, Emgu.CV.CvEnum.CALIB_CB_TYPE.ADAPTIVE_THRESH);
             if (corners == null)
                 return null;
@@ -578,7 +607,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             var ids = new int[cameraCorners.Length];
             for (var i = 0; i < cameraCorners.Length; i++) ids[i] = i;
             var points = new List<MathNet.Numerics.LinearAlgebra.Double.DenseVector[]>();
-            for (int i = 0; i < 10; i += 3)
+            for (int i = 0; i < 18; i += 6)
             {
                 var projected = GreySL(projector, camera, cameraCorners, nolight, fullColor, false, i)
                     .Zip(GreySL(projector, camera, cameraCorners, nolight, fullColor, true, i), 
@@ -625,7 +654,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             int max = (int)Math.Floor(Math.Log((vertical ? projector.bitmap.Width : projector.bitmap.Height), 2)) + 1;
             int subdivisions = 1;
             var nol = Classifier(nolight);
-            for (var step = 0; step < max - 3; step++)
+            for (var step = 0; step < max - 4; step++)
             {
                 projector.DrawBackground(Color.Black);
                 camera.TakePicture(2).Dispose();
@@ -668,7 +697,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                         }
                         return num;
                     })
-                .Select(row => (1 - (double)row / Math.Pow(2, max - 3)) * (vertical ? projector.bitmap.Width : projector.bitmap.Height)).ToArray();
+                .Select(row => (1 - (double)row / Math.Pow(2, max - 4)) * (vertical ? projector.bitmap.Width : projector.bitmap.Height)).ToArray();
          
             return result;
         }

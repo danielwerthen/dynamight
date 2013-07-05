@@ -19,6 +19,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         public Bitmap bitmap;
         public StructuredLightProgram slp;
         public BitmapProgram bp;
+        public CheckerboardProgram cp;
         public Projector()
         {
             var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
@@ -29,6 +30,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
             window.SetProgram(slp = new StructuredLightProgram());
             bp = new BitmapProgram(bitmap = new Bitmap(window.Width, window.Height));
+            cp = new CheckerboardProgram();
         }
 
         public void SetBounds(RectangleF bounds)
@@ -66,6 +68,12 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         {
             window.SetProgram(slp);
             slp.SetGrey(step, vertical, offset, color);
+            window.RenderFrame();
+        }
+
+        public void DrawCheckerboard()
+        {
+            window.SetProgram(cp);
             window.RenderFrame();
         }
 
