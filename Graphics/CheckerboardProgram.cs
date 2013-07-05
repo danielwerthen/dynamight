@@ -35,8 +35,9 @@ void main(void)
 }
 ";
 
-		double rotx, roty, rotz;
-		public void SetTransforms(double rotx, double roty, double rotz)
+		double rotx, roty, rotz,
+			scale, offsetx, offsety;
+		public void SetTransforms(double rotx, double roty, double rotz, double scale, double offsetx, double offsety)
 		{
 			parent.MakeCurrent();
 			GL.MatrixMode(MatrixMode.Modelview);
@@ -44,12 +45,17 @@ void main(void)
 			var rotX = OpenTK.Matrix4d.CreateRotationX(rotx);
 			var rotY = OpenTK.Matrix4d.CreateRotationY(roty);
 			var rotZ = OpenTK.Matrix4d.CreateRotationZ(rotz);
+			var sm = OpenTK.Matrix4d.Scale(scale);
+			var offset = OpenTK.Matrix4d.CreateTranslation(offsetx, offsety, 0);
 			var tran = OpenTK.Matrix4d.CreateTranslation(-0.5, -0.5, 0);
 			var trani = OpenTK.Matrix4d.CreateTranslation(0.5, 0.5, 0);
 			this.rotx = rotx;
 			this.roty = roty;
 			this.rotz = rotz;
-			var mat = tran * rotX * rotY * rotZ * trani;
+			this.scale = scale;
+			this.offsetx = offsetx;
+			this.offsety = offsety;
+			var mat = tran * rotX * rotY * rotZ * sm * offset * trani;
 			GL.LoadMatrix(ref mat);
 		}
 
@@ -84,9 +90,11 @@ void main(void)
 			var rotX = OpenTK.Matrix4d.CreateRotationX(rotx);
 			var rotY = OpenTK.Matrix4d.CreateRotationY(-roty);
 			var rotZ = OpenTK.Matrix4d.CreateRotationZ(-rotz);
+			var sm = OpenTK.Matrix4d.Scale(scale);
+			var offset = OpenTK.Matrix4d.CreateTranslation(offsetx, offsety, 0);
 			var tran = OpenTK.Matrix4d.CreateTranslation(-0.5, -0.5, 0);
 			var trani = OpenTK.Matrix4d.CreateTranslation(0.5, 0.5, 0);
-			var mat = tran * rotX * rotY * rotZ * trani;
+			var mat = tran * rotX * rotY * rotZ * sm * offset * trani;
 			return GetLocalCorners()
 				.Select(lp =>
 					new PointF((float)(mat.Column0.X * lp.X + mat.Column0.Y * lp.Y + mat.Column0.W) * (float)bitmap.Width,

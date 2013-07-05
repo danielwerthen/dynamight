@@ -73,7 +73,7 @@ namespace MultipleScreens
 			window2.RenderFrame();
 			while (true)
 			{
-				cp.SetTransforms(xrot, xrot, xrot);
+				cp.SetTransforms(xrot, -2 * xrot, xrot, 0.7,0.0,0.0);
 				window.ProcessEvents();
 				window.RenderFrame();
 				window2.ProcessEvents();
