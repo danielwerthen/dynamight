@@ -16,9 +16,11 @@ namespace Graphics
 			this.bitmap = bitmap;
 		}
 		const string VERTEXSHADER =
-@"void main(void)
+@"
+void main(void)
 {
   gl_Position = ftransform(); // gl_ModelViewProjectionMatrix * gl_Vertex;
+  //gl_TexCoord[0] = gl_MultiTexCoord0; 
 }";
 		const string FRAGMENTSHADER =
 @"
@@ -29,6 +31,7 @@ uniform int HEIGHT;
 void main(void)
 {
   gl_FragColor = texture2D( COLORTABLE, vec2(gl_FragCoord.x / float(WIDTH),1. - gl_FragCoord.y / float(HEIGHT)));
+  //gl_FragColor = texture2D(COLORTABLE, gl_TexCoord[0].st);
 }
 ";
 		int texture, program;
@@ -83,13 +86,13 @@ void main(void)
 			GL.Begin(BeginMode.Quads);
 
 			GL.TexCoord2(0.0f, 1.0f);
-			GL.Vertex2(-1.0f, -1.0f);
+			GL.Vertex2(0.0f, 0.0f);
 			GL.TexCoord2(1.0f, 1.0f);
-			GL.Vertex2(1.0f, -1.0f);
+			GL.Vertex2(1.0f, 0.0f);
 			GL.TexCoord2(1.0f, 0.0f);
 			GL.Vertex2(1.0f, 1.0f);
 			GL.TexCoord2(0.0f, 0.0f);
-			GL.Vertex2(-1.0f, 1.0f);
+			GL.Vertex2(0.0f, 1.0f);
 
 			GL.End();
 		}

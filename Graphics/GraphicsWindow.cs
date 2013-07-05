@@ -52,7 +52,7 @@ namespace Graphics
 
 		private IntPtr WindowHandle;
 
-		protected void MakeCurrent()
+		public void MakeCurrent()
 		{
 			glContext.MakeCurrent(WindowInfo);
 		}
@@ -80,6 +80,31 @@ namespace Graphics
 			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
 			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
 			return texture;
+		}
+
+		public void LoadFbo(int width, int height, out int ColorTexture, out int FboHandle)
+		{
+			MakeCurrent();
+			GL.GenTextures(1, out ColorTexture);
+			GL.BindTexture(TextureTarget.Texture2D, ColorTexture);
+			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Clamp);
+			GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Clamp);
+
+			GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, width, height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Rgba, PixelType.UnsignedByte, IntPtr.Zero);
+
+			var error = GL.GetError();
+			if (error != ErrorCode.NoError)
+				throw new Exception(error.ToString());
+
+			GL.BindTexture(TextureTarget.Texture2D, 0);
+
+			GL.Ext.GenFramebuffers(1, out FboHandle);
+			GL.Ext.BindFramebuffer(FramebufferTarget.FramebufferExt, FboHandle);
+			GL.Ext.FramebufferTexture2D(FramebufferTarget.FramebufferExt, FramebufferAttachment.ColorAttachment0Ext, TextureTarget.Texture2D, ColorTexture, 0);
+
+			GL.Ext.CheckFramebufferStatus(FramebufferTarget.FramebufferExt);
 		}
 
 		public int CreateShader(ShaderType type, string shader)
@@ -141,7 +166,7 @@ namespace Graphics
 			GL.MatrixMode(MatrixMode.Projection);
 			GL.LoadIdentity();
 			//GL.Ortho(-1.0, 1.0, -1.0, 1.0, 0.0, 1.0);
-            GL.Ortho(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
+            GL.Ortho(0.0, 1.0, 0.0, 1.0, -100.0, 100.0);
 			GL.MatrixMode(MatrixMode.Modelview);
 			GL.LoadIdentity();
 		}

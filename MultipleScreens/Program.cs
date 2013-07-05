@@ -56,37 +56,31 @@ namespace MultipleScreens
 
 			Camera cam = new Camera();
 
-			var window = new ProgramWindow(1000, 50, 500, 500);
+			var window = new ProgramWindow(1000, 50, 640, 480);
+			var window2 = new ProgramWindow(1000, 530, 640, 480);
 			window.ResizeGraphics();
-			BitmapProgram bp = new BitmapProgram();
-			window.SetProgram(bp);
-			var xs = Range(400, 100, 25).ToArray();
-			var ys = Range(400, 100, 25).ToArray();
-			var points = new PointF[xs.Length * ys.Length];
-			Random r = new Random();
-			Func<double> ra = () => r.NextDouble() * r.NextDouble() * 15;
-			for (var yi = 0; yi < ys.Length; yi++)
-				for (var xi = 0; xi < xs.Length; xi++)
-				{
-					points[xi + yi * xs.Length] = new PointF((float)(ra() + xs[xi]), (float)(ra() + ys[yi]));
-				}
-			var ss = GridSmoothing.Smooth(points , new Size(xs.Length, ys.Length));
-			bp.Draw().Fill(Color.Black)
-				.Color(Color.White)
-				//.DrawPoint(points, 5)
-				.Color(Color.Red)
-				.DrawPoint(ss, 5)
-				.Finish();
-
+			window2.ResizeGraphics();
+			var cp = new CheckerboardProgram();
+			var bp = new BitmapProgram();
+			window.SetProgram(cp);
+			window2.SetProgram(bp);
+			cp.SetSize(8, 8);
+			double xrot = 0;
+			var corners = cp.GetCorners().ToArray();
 			window.RenderFrame();
-			bp.Draw().Fill(Color.Black)
-				.DrawPoint(ss, 5).Finish();
-
-			window.RenderFrame();
+			//cp.Draw().Fill(Color.Black).DrawPoint((1.0 / (double)8.0) * 640.0, (1.0 / (double)5.0) * 480.0).Finish();
+			bp.Draw().Fill(Color.Black).DrawPoint(corners, 5).Finish();
+			window2.RenderFrame();
 			while (true)
 			{
+				cp.SetTransforms(xrot, xrot, xrot);
 				window.ProcessEvents();
 				window.RenderFrame();
+				window2.ProcessEvents();
+				window2.RenderFrame();
+				corners = cp.GetCorners().ToArray();
+				bp.Draw().Fill(Color.Black).DrawPoint(corners, 5).Finish();
+				xrot += 0.025;
 			}
 		}
 	}
