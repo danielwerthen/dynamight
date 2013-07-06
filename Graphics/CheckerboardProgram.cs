@@ -62,14 +62,18 @@ void main(void)
 		Size size;
 		public void SetSize(int cols, int rows)
 		{
-			size = new Size(cols, rows);
-			Draw().All((x, y) =>
-			{
-				double ix = Math.Floor(x * cols) % 2;
-				double iy = Math.Floor(y * rows) % 2;
-				double i = iy > 0 ? ix : 1 - ix;
-				return Color.FromArgb((int)(i * 255), (int)(i * 255), (int)(i * 255));
-			}, true).Finish();
+            if (cols != size.Width || rows != size.Height)
+            {
+                size = new Size(cols, rows);
+                Draw().All((x, y) =>
+                {
+                    double ix = Math.Floor(x * cols) % 2;
+                    double iy = Math.Floor(y * rows) % 2;
+                    double i = iy > 0 ? ix : 1 - ix;
+                    i = 1 - i;
+                    return Color.FromArgb((int)(i * 255), (int)(i * 255), (int)(i * 255));
+                }, true).Finish();
+            }
 		}
 
 		private IEnumerable<PointF> GetLocalCorners()
@@ -109,7 +113,7 @@ void main(void)
 			this.parent = parent;
 			GL.Disable(EnableCap.Dither);
 			GL.Enable(EnableCap.Texture2D);
-			GL.ClearColor(System.Drawing.Color.Black);
+			GL.ClearColor(System.Drawing.Color.White);
 			var vs = parent.CreateShader(ShaderType.VertexShader, VERTEXSHADER);
 			var fs = parent.CreateShader(ShaderType.FragmentShader, FRAGMENTSHADER);
 			program = parent.CreateProgram(vs, fs);
@@ -133,6 +137,7 @@ void main(void)
 
 		public override void Unload()
 		{
+            this.SetTransforms(0, 0, 0, 1, 0, 0);
 			if (program != 0)
 				GL.DeleteProgram(program);
 			if (texture != 0)

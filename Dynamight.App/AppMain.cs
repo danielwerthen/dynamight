@@ -193,37 +193,68 @@ namespace Dynamight.App
             }
         }
 
-        static void CalibrateCamera(Camera camera, Projector projector)
+        static CalibrationResult CalibrateCamera(Camera camera, Projector projector, out PointF[][] data, bool reloadData = false, bool reloadCalc = true)
         {
+            string datafile = "cameradata.xml";
+            string calcfile = "cameracalibration.xml";
+
+
             projector.DrawBackground(Color.Black);
             var list = new List<PointF[]>();
-            while (true)
+            if (!reloadData && File.Exists(datafile))
+                list = DeSerializeObject<List<PointF[]>>(datafile);
+            else
             {
-                projector.DrawBackground(Color.White);
+                while (true)
+                {
+                    var cc = StereoCalibration.GetCameraCorners(projector, camera, new Size(7, 4), false);
+                    if (cc != null)
+                    {
+                        list.Add(cc);
+                        break;
+                    }
+                }
+                Console.WriteLine("First image OK. Press enter to continue with manual step.");
+                Console.ReadLine();
+                while (true)
+                {
+                    projector.DrawBackground(Color.White);
+                    Thread.Sleep(120);
+                    var cc = StereoCalibration.GetCameraCorners(projector, camera, new Size(7, 4), false);
+                    if (cc != null)
+                    {
+                        list.Add(cc);
+                        projector.DrawBackground(Color.Green);
+                        Thread.Sleep(300);
+                    }
+                    else
+                    {
+                        projector.DrawBackground(Color.Red);
+                        Thread.Sleep(300);
+                    }
+
+                    if (list.Count > 25)
+                    {
+                        SerializeObject(list, datafile);
+                        break;
+                    }
+                }
+                projector.DrawBackground(Color.Orange);
                 Thread.Sleep(120);
-                var cc = StereoCalibration.GetCameraCorners(projector, camera, new Size(7, 4));
-                if (cc != null)
-                {
-                    list.Add(cc);
-                    projector.DrawBackground(Color.Green);
-                    Thread.Sleep(300);
-                }
-                else
-                {
-                    projector.DrawBackground(Color.Red);
-                    Thread.Sleep(300);
-                }
-
-                if (list.Count > 25)
-                    break;
+                Console.WriteLine("Data gather done. Press enter to calculate calibration.");
+                Console.ReadLine();
             }
-            projector.DrawBackground(Color.Orange);
-            Thread.Sleep(120);
-            var calib = StereoCalibration.Calibrate(list
-                .Select(row => new CalibrationData() { CameraCorners = row, ProjectorCorners = row })
-                .ToArray()
-                , camera, projector, new Size(7, 4), 0.05f);
 
+            CalibrationResult calib;
+            if (!reloadCalc && File.Exists(calcfile))
+                calib = DeSerializeObject<CalibrationResult>(calcfile);
+            else
+            {
+            
+                calib = StereoCalibration.CalibrateCamera(list.ToArray()
+                    , camera, new Size(7, 4), 0.05f);
+            }
+            data = list.ToArray();
             projector.DrawBackground(System.Drawing.Color.Black);
             var peas = new float[][] {
                 new float[] { 0f, 0f, 0f },
@@ -231,12 +262,16 @@ namespace Dynamight.App
                 new float[] { 0f, 0.1f, 0f },
                 new float[] { 0f, 0f, 0.1f },
             };
-            var tpe = calib.TransformG2P(peas);
-            var tpp = calib.TransformG2C(peas);
+            var t = calib.Transform(peas);
             var cp = camera.TakePicture(0);
-            QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
+            QuickDraw.Start(cp).DrawPoint(t, 5).Finish();
             StereoCalibration.DebugWindow.DrawBitmap(cp);
-            projector.DrawPoints(tpe, 5);
+            return calib;
+        }
+
+        static CalibrationResult CalibrateProjector(Camera camera, Projector projector, CalibrationResult cameraCalib, PointF[][] cacalibdata)
+        {
+            return StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7,4), 0.05f);
         }
 
         static void Main(string[] args)
@@ -250,9 +285,11 @@ namespace Dynamight.App
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
             Projector projector = new Projector();
-            projector.DrawCheckerboard();
 
-            var calib = Calibrator(camera, projector);
+            PointF[][] data;
+            var cc = CalibrateCamera(camera, projector, out data);
+            var pc = CalibrateProjector(camera, projector, cc, data);
+
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
             sensor.SkeletonStream.Enable();
@@ -264,8 +301,8 @@ namespace Dynamight.App
                 new float[] { 0f, 0.1f, 0f },
                 new float[] { 0f, 0f, 0.1f },
             };
-            var tpe = calib.TransformG2P(peas);
-            var tpp = calib.TransformG2C(peas);
+            var tpe = pc.Transform(peas);
+            var tpp = cc.Transform(peas);
             var test = tpe.Select(row => new PointF(-row.X, -row.Y)).ToArray();
             var cp = camera.TakePicture(0);
             QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
@@ -295,8 +332,8 @@ namespace Dynamight.App
                             
                         if (points.Length > 0)
                         {
-                            var ppoints = calib.TransformC2P(points);
-                            qd.DrawPoint(ppoints, 5);
+                            //var ppoints = calib.TransformC2P(points);
+                            //qd.DrawPoint(ppoints, 5);
                         }
                     }
                     qd.Finish();

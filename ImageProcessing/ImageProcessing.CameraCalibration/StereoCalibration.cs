@@ -57,14 +57,14 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 }
         }
 
-        public static MCvPoint3D32f[] GenerateCheckerBoard(Size pattern, float checkerBoardSize)
+        public static MCvPoint3D32f[] GenerateCheckerBoard(Size pattern, float checkerBoardSize, float z = 0f)
         {
             var globalPoints = new MCvPoint3D32f[pattern.Width * pattern.Height];
             for (var y = 0; y < pattern.Height; y++)
             {
                 for (var x = 0; x < pattern.Width; x++)
                 {
-                    globalPoints[x + y * pattern.Width] = new Emgu.CV.Structure.MCvPoint3D32f((float)(x * checkerBoardSize), -(float)(y * checkerBoardSize), 0);
+                    globalPoints[x + y * pattern.Width] = new Emgu.CV.Structure.MCvPoint3D32f((float)(x * checkerBoardSize), -(float)(y * checkerBoardSize), z);
                 }
             }
             return globalPoints;
@@ -78,23 +78,95 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return diff > thresh;
         }
 
-        public static void CalibrateCamera(Projector projector, Camera camera, Size pattern, float checkerBoardSize)
+        public static CalibrationResult CalibrateCamera(PointF[][] cameraCorners, Camera camera, Size pattern, float checkerBoardSize)
         {
-            var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
-            var cameraCorners = GetCameraCorners(projector, camera, pattern);
+            var globals = GenerateCheckerBoard(pattern, checkerBoardSize, 0);
+            var globalCorners = cameraCorners.Select(row => globals).ToArray();
             var intrinsic = new IntrinsicCameraParameters();
-            intrinsic.IntrinsicMatrix = new Matrix<double>(new double[,] { { 531.15f * 4f / 3f, 0, 1 }, { 0, 531.15f, 1}, { 0, 0, 1 } });
             ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(new MCvPoint3D32f[][] { globals }, new PointF[][] { cameraCorners }, camera.Size, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO, out cameraExtrinsicsArray);
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, camera.Size, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
             var extrinsic = cameraExtrinsicsArray.First();
+            return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
+        }
 
-            var test = Emgu.CV.CameraCalibration.ProjectPoints(new MCvPoint3D32f[] { new MCvPoint3D32f(0, 0, 0),
-            new MCvPoint3D32f(0.1f, 0, 0),
-            new MCvPoint3D32f(0, 0.1f, 0),
-            new MCvPoint3D32f(0, 0, 0.1f)}, extrinsic, intrinsic);
-            var bitmap = camera.TakePicture(0);
-            QuickDraw.Start(bitmap).DrawPoint(test, 5).Finish();
-            DebugWindow.DrawBitmap(bitmap);
+        public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
+        {
+            List<PointF[]> cameraCorners = new List<PointF[]>();
+            List<PointF[]> projectorCorners = new List<PointF[]>();
+            var cpattern = new Size(pattern.Width - 1, pattern.Height - 1);
+            int steps = 1;
+            double rotx = 0, roty = 0, rotz = 0;
+            for (int i = 0; i < steps; i++)
+            {
+                var di = (double)i / (double)steps;
+                rotx = 0;
+                roty = Math.Sin(di * Math.PI / 2) * 0.8;
+                rotz = Math.Sin(di * Math.PI / 2) * 0.6;
+                var pcs = projector.DrawCheckerboard(pattern, 
+                    rotx,
+                    roty,
+                    rotz, 0.7);
+                var ccs = GetCameraCorners(camera, cpattern, false);
+                if (ccs != null)
+                {
+
+                    projectorCorners.Add(pcs);
+                    cameraCorners.Add(ccs);
+                    var withCorners = camera.TakePicture(0);
+                    if (DebugWindow != null)
+                    {
+                        QuickDraw.Start(withCorners)
+                            .Color(Color.White)
+                            .DrawPoint(ccs, 5)
+                            .Finish();
+                        DebugWindow.DrawBitmap(withCorners);
+                    }
+                }
+            }
+            //for (int i = 0; i < steps; i++)
+            //{
+            //    var di = (double)i / (double)steps;
+            //    rotx += 0.04;
+            //    roty *= 0.90;
+            //    var pcs = projector.DrawCheckerboard(pattern,
+            //        rotx,
+            //        roty,
+            //        rotz, 0.7);
+            //    var ccs = GetCameraCorners(camera, cpattern, false);
+            //    if (ccs != null)
+            //    {
+
+            //        projectorCorners.Add(pcs);
+            //        cameraCorners.Add(ccs);
+            //        var withCorners = camera.TakePicture(0);
+            //        if (DebugWindow != null)
+            //        {
+            //            QuickDraw.Start(withCorners)
+            //                .Color(Color.White)
+            //                .DrawPoint(ccs, 5)
+            //                .Finish();
+            //            DebugWindow.DrawBitmap(withCorners);
+            //        }
+            //    }
+            //}
+
+            var hm = CreateHomography(cameraCorners.ToArray(), projectorCorners.ToArray());
+            var globals = GenerateCheckerBoard(cameraPattern, checkerboardSize, 0);
+            var globalCorners = cacalibdata.Select(row => globals).ToArray();
+            var proj = cacalibdata.Select(cs => cs.Select(c => new PointF(c.X, c.Y)).ToArray()).ToArray();
+            foreach (var p in proj)
+                hm.ProjectPoints(p);
+            IntrinsicCameraParameters projIntrin = new IntrinsicCameraParameters();
+            ExtrinsicCameraParameters[] projExtrins;
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projExtrins); 
+            
+            return new CalibrationResult() { Intrinsic = projIntrin, Extrinsic = projExtrins.First() };
+        }
+
+        public static HomographyMatrix CreateHomography(PointF[][] camera, PointF[][] projector)
+        {
+            return Emgu.CV.CameraCalibration.FindHomography(camera.SelectMany(c => c).ToArray(), projector.SelectMany(c => c).ToArray(),
+                Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.DEFAULT, 2);
         }
 
         public static PointF[] FlipX(PointF[] arr, Size size)
@@ -139,6 +211,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return res;
         }
 
+        
         public static StereoCalibrationResult Calibrate(CalibrationData[] data, Camera camera, Projector projector, Size pattern, float checkerBoardSize)
         {
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize);
@@ -471,7 +544,18 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return points.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
         }
 
-        public static PointF[] GetCameraCorners(Projector projector, Camera camera, Size pattern)
+        private static PointF[] GetCameraCorners(Camera camera, Size pattern, bool RB = false)
+        {
+            var nolight = camera.TakePicture(2);
+            PointF[] cameraCorners;
+            if (RB)
+                cameraCorners = DetectCornersRB(nolight, pattern);
+            else
+                cameraCorners = DetectCornersBW(nolight, pattern);
+            return cameraCorners;
+        }
+
+        public static PointF[] GetCameraCorners(Projector projector, Camera camera, Size pattern, bool RB = true)
         {
 
             //Take pic of checkerboard with no proj light
@@ -481,10 +565,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             Bitmap withCorners;
             do
             {
-                
-                var nolight = camera.TakePicture(2);
                 withCorners = camera.TakePicture();
-                cameraCorners = DetectCornersRB(nolight, pattern);
+                cameraCorners = GetCameraCorners(camera, pattern, RB);
 
             } while (cameraCorners == null);
 
@@ -774,6 +856,88 @@ namespace Dynamight.ImageProcessing.CameraCalibration
     {
         public PointF[] CameraCorners;
         public PointF[] ProjectorCorners;
+    }
+
+    public class CalibrationResult
+    {
+        public IntrinsicCameraParameters Intrinsic;
+        public ExtrinsicCameraParameters Extrinsic;
+
+        public PointF[] Transform(float[][] points)
+        {
+            var res = Emgu.CV.CameraCalibration.ProjectPoints(points.Select(row => new MCvPoint3D32f(row[0], row[1], row[2])).ToArray(), Extrinsic, Intrinsic);
+            return res;
+        }
+
+        public float[][] HTransform(PointF[] points, float z)
+        {
+            var xs = Range.OfDoubles(1, -1, 0.1).ToArray();
+            var ys = Range.OfDoubles(1, -1, 0.1).ToArray();
+            var dst = xs.SelectMany(x => ys.Select(y => new float[] { (float)x, (float)y, z })).ToArray();
+            var src = Intrinsic.Undistort(Transform(dst), null, null);
+            var hm = Emgu.CV.CameraCalibration.GetPerspectiveTransform(src, dst.Select(r => new PointF(r[0], r[1])).ToArray());
+            var res = points.Select(p => new PointF(p.X, p.Y)).ToArray();
+            var undistorted = Intrinsic.Undistort(res, null, null);
+            
+            hm.ProjectPoints(undistorted);
+            return res.Select(r => new float[] { r.X, r.Y, z }).ToArray();
+ 
+        }
+
+        public float[][] InverseTransform(PointF[] points, float z)
+        {
+            var undistorted = Intrinsic.Undistort(points, null, null);
+            var rt = Extrinsic.ExtrinsicMatrix;
+            var t = Extrinsic.TranslationVector;
+
+            MathNet.Numerics.LinearAlgebra.Double.DenseMatrix rt2 = MathNet.Numerics.LinearAlgebra.Double.DenseMatrix.OfArray(new double[,] 
+            {
+                { rt.Data[0,0], rt.Data[0,1], rt.Data[0,2], rt.Data[0,3] },
+                { rt.Data[1,0], rt.Data[1,1], rt.Data[1,2], rt.Data[1,3] },
+                { rt.Data[2,0], rt.Data[2,1], rt.Data[2,2], rt.Data[2,3] },
+                {0,0,0,1}
+            });
+            var irt = rt2.Inverse();
+            var ids = new int[undistorted.Length];
+            for (var i = 0; i < ids.Length; i++) ids[i] = i;
+            var threes = ids.Select(i => new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { undistorted[i].X, undistorted[i].Y, 1, 1 })).ToArray();
+            var tt = threes.Select(v => irt.Multiply(v)).ToArray();
+            var test = irt.Multiply(new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { 1, 1, 1, 1 }));
+            var ttest2 = Emgu.CV.CameraCalibration.ProjectPoints(new MCvPoint3D32f[] { new MCvPoint3D32f((float)test[0], (float)test[1], (float)test[2]) }, Extrinsic, Intrinsic);
+            var ttest3 = Intrinsic.Undistort(ttest2, null, null);
+            return tt.Select(v => new float[] { (float)v[0], (float)v[1], (float)v[2] }).ToArray();
+            //return ids.Select(i => new float[] { (float)tr[i][0], (float)tr[i][1], (float)tr[i][2] }).ToArray();
+        }
+
+        struct coord
+        {
+            public int x;
+            public int y;
+        }
+
+        public float[][] LookupInverse(PointF[] points, float z)
+        {
+            Dictionary<coord, float[]> lookup = new Dictionary<coord,float[]>();
+            var xs = Range.OfDoubles(1280, 0, 1).ToArray();
+            var ys = Range.OfDoubles(1280, 0, 1).ToArray();
+            var all = xs.SelectMany(x => ys.Select(y => new float[] { (float)x, (float)y, z })).ToArray();
+            var ids = new int[all.Length];
+            for (var i = 0; i < all.Length; i++)
+                ids[i] = i;
+            var locals = Transform(all);
+            foreach (var i in ids)
+                lookup[new coord() { x = (int)locals[i].X, y = (int)locals[i].Y }] = all[i];
+
+            return points.Select(p => lookup[new coord() { x = (int)Math.Round(p.X, 0), y = (int)Math.Round(p.Y, 0) }]).ToArray();
+        }
+
+        public double Intersect(MathNet.Numerics.LinearAlgebra.Generic.Vector<double> p0,
+            MathNet.Numerics.LinearAlgebra.Generic.Vector<double> l0,
+            MathNet.Numerics.LinearAlgebra.Generic.Vector<double> n,
+            MathNet.Numerics.LinearAlgebra.Generic.Vector<double> l)
+        {
+            return (p0 - l0).DotProduct(n) / l.DotProduct(n);
+        }
     }
 
     public class StereoCalibrationResult

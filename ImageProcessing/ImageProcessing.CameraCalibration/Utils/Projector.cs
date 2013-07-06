@@ -19,7 +19,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 		public Bitmap bitmap;
 		public StructuredLightProgram slp;
 		public BitmapProgram bp;
-		public Bitmap checkerboard;
+        public CheckerboardProgram cp;
 		public Projector()
 		{
 			var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
@@ -30,6 +30,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
 			window.SetProgram(slp = new StructuredLightProgram());
 			bp = new BitmapProgram(bitmap = new Bitmap(window.Width, window.Height));
+            cp = new CheckerboardProgram();
 		}
 
 		public void SetBounds(RectangleF bounds)
@@ -70,6 +71,14 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 			window.RenderFrame();
 		}
 
+        public PointF[] DrawCheckerboard(System.Drawing.Size pattern, double rotx, double roty, double rotz, double scale = 1, double offsetx = 0, double offsety = 0)
+        {
+            window.SetProgram(cp);
+            cp.SetSize(pattern.Width, pattern.Height);
+            cp.SetTransforms(rotx, roty, rotz, scale, offsetx, offsety);
+            window.RenderFrame();
+            return cp.GetCorners().ToArray();
+        }
 
 
 		public void DrawScanLine(int Step, int Length, bool Rows)
