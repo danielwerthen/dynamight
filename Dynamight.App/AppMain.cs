@@ -269,9 +269,18 @@ namespace Dynamight.App
             return calib;
         }
 
-        static CalibrationResult CalibrateProjector(Camera camera, Projector projector, CalibrationResult cameraCalib, PointF[][] cacalibdata)
+        static CalibrationResult CalibrateProjector(Camera camera, Projector projector, CalibrationResult cameraCalib, PointF[][] cacalibdata, bool reload = false)
         {
-            return StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7,4), 0.05f);
+            CalibrationResult result;
+            string datafile = "projectorcalibration.xml";
+            if (!reload && File.Exists(datafile))
+                result = DeSerializeObject<CalibrationResult>(datafile);
+            else
+            {
+                result = StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7, 4), 0.05f);
+                SerializeObject(result, datafile);
+            }
+            return result;
         }
 
         static void Main(string[] args)
@@ -290,24 +299,48 @@ namespace Dynamight.App
             var cc = CalibrateCamera(camera, projector, out data);
             var pc = CalibrateProjector(camera, projector, cc, data);
 
+
+            if (true)
+            {
+
+                var joints = DeSerializeObject<SkeletonPoint[]>("skeleton.xml");
+                var kc2 = new KinectCalibrator(sensor, cc);
+                var globals = kc2.ToGlobal(joints).ToArray();
+                var campoints = cc.Transform(globals);
+                var projpoints = pc.Transform(globals);
+                projector.DrawBackground(Color.Black);
+                var pic = new Bitmap("reference.bmp");
+                QuickDraw.Start(pic).DrawPoint(campoints, 5).Finish();
+                window.DrawBitmap(pic);
+                projector.DrawPoints(projpoints, 5);
+                while (true)
+                    Thread.Sleep(500);
+            }
+
+
+
+
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
+            sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
             sensor.SkeletonStream.Enable();
             sensor.Start();
             projector.DrawBackground(System.Drawing.Color.Black);
-            var peas = new float[][] {
-                new float[] { 0f, 0f, 0f },
-                new float[] { 0.1f, 0f, 0f },
-                new float[] { 0f, 0.1f, 0f },
-                new float[] { 0f, 0f, 0.1f },
-            };
-            var tpe = pc.Transform(peas);
-            var tpp = cc.Transform(peas);
-            var test = tpe.Select(row => new PointF(-row.X, -row.Y)).ToArray();
-            var cp = camera.TakePicture(0);
-            QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
-            window.DrawBitmap(cp);
-            projector.DrawPoints(tpe, 5);
+            //var peas = new float[][] {
+            //    new float[] { 0f, 0f, 0f },
+            //    new float[] { 0.1f, 0f, 0f },
+            //    new float[] { 0f, 0.1f, 0f },
+            //    new float[] { 0f, 0f, 0.1f },
+            //};
+            //var tpe = pc.Transform(peas);
+            //var tpp = cc.Transform(peas);
+            //var test = tpe.Select(row => new PointF(-row.X, -row.Y)).ToArray();
+            //var cp = camera.TakePicture(0);
+            //QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
+            //window.DrawBitmap(cp);
+            //projector.DrawPoints(tpe, 5);
+
+            var kc = new KinectCalibrator(sensor, cc);
 
             while (sensor.IsRunning)
             {
@@ -321,25 +354,29 @@ namespace Dynamight.App
                     }
                     else
                         continue;
-
-                    var qd = QuickDraw.Start(projector.bitmap);
+                    var allJoints = skeletons.Where(row => row.TrackingState == SkeletonTrackingState.Tracked)
+                        .SelectMany(skeleton => skeleton.Joints.Where(joint => joint.TrackingState == JointTrackingState.Tracked && joint.JointType == JointType.HandRight));
+                    var points = kc.ToGlobal(allJoints.Select(ro => ro.Position)).ToArray();
+                    if (points.Length > 0)
                     {
-                        qd.Fill(System.Drawing.Color.Black);
-                        var points = skeletons.Where(row => row.TrackingState == SkeletonTrackingState.Tracked)
-                            .SelectMany(skeleton => skeleton.Joints.Where(joint => joint.TrackingState == JointTrackingState.Tracked))
-                            .Select(joint => sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(joint.Position, DepthImageFormat.Resolution640x480Fps30))
-                            .ToArray();
-                            
-                        if (points.Length > 0)
-                        {
-                            //var ppoints = calib.TransformC2P(points);
-                            //qd.DrawPoint(ppoints, 5);
-                        }
+                        var projp = pc.Transform(points.Concat(new float[][] { new float[] {0f,0f,0f} }).ToArray());
+                        //var camp = cc.Transform(points);
+                        projector.DrawPoints(projp, 15);
+                        var cp = camera.TakePicture(0);
+                        //QuickDraw.Start(cp).DrawPoint(camp, 5).Finish();
+                        window.DrawBitmap(cp);
+                        //var ppoints = calib.TransformC2P(points);
+                        //qd.DrawPoint(ppoints, 5);
                     }
-                    qd.Finish();
-                    projector.DrawBitmap(projector.bitmap);
                 }
             }
+        }
+
+        public static float[] MapSkeletonPoint(KinectSensor sensor, Joint joint)
+        {
+            var depth = sensor.CoordinateMapper.MapSkeletonPointToDepthPoint(joint.Position, DepthImageFormat.Resolution640x480Fps30);
+            var color = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, depth, ColorImageFormat.RgbResolution1280x960Fps12);
+            return new float[] { depth.X / 1000f, -depth.Y / 1000f, -depth.Depth / 1000 };
         }
 
     }

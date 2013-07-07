@@ -884,6 +884,35 @@ namespace Dynamight.ImageProcessing.CameraCalibration
  
         }
 
+        public float[][] InverseTransform(float[][] points)
+        {
+            //var undistorted = Intrinsic.Undistort(points.Select(p => new PointF(p[0], p[1])).ToArray(), null, null);
+            var ud = Range.OfInts(points.Length).Select(i => new MathNet.Numerics.LinearAlgebra.Single.DenseVector(new float[] { points[i][0], points[i][1], points[i][2], 1 })).ToArray();
+            var rt = Extrinsic.ExtrinsicMatrix;
+            var t = Extrinsic.TranslationVector;
+            var ki = new ExtrinsicCameraParameters(
+              new RotationVector3D(new double[] { 0.56 * Math.PI / 180.0, 0.07 * Math.PI / 180.0, +0.05 * Math.PI / 180.0 }),
+              new Matrix<double>(new double[,] { { -0.0256 }, {0.00034 }, {0.00291 } })).ExtrinsicMatrix;
+
+            MathNet.Numerics.LinearAlgebra.Single.DenseMatrix ki2 = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfArray(new Single[,] 
+            {
+                { (float)ki.Data[0,0], (float)ki.Data[0,1], (float)ki.Data[0,2], (float)ki.Data[0,3] },
+                { (float)ki.Data[1,0], (float)ki.Data[1,1], (float)ki.Data[1,2], (float)ki.Data[1,3] },
+                { (float)ki.Data[2,0], (float)ki.Data[2,1], (float)ki.Data[2,2], (float)ki.Data[2,3] },
+                {0,0,0,1}
+            });
+
+            MathNet.Numerics.LinearAlgebra.Single.DenseMatrix rt2 = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfArray(new Single[,] 
+            {
+                { (float)rt.Data[0,0], (float)rt.Data[0,1], (float)rt.Data[0,2], (float)rt.Data[0,3] },
+                { (float)rt.Data[1,0], (float)rt.Data[1,1], (float)rt.Data[1,2], (float)rt.Data[1,3] },
+                { (float)rt.Data[2,0], (float)rt.Data[2,1], (float)rt.Data[2,2], (float)rt.Data[2,3] },
+                {0,0,0,1}
+            });
+            var rti = ki2 * rt2.Inverse();
+            return ud.Select(v => rti.Multiply(v)).Select(v => v.ToArray()).ToArray();
+        }
+
         public float[][] InverseTransform(PointF[] points, float z)
         {
             var undistorted = Intrinsic.Undistort(points, null, null);

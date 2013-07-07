@@ -91,15 +91,25 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 			//window.RenderFrame();
 		}
 
-		public void DrawPoints(System.Drawing.PointF[] points, float size)
+		public void DrawPoints(float[][] points, float size)
 		{
 			window.SetProgram(bp);
 			var draw = bp.Draw().Fill(Color.Black);
 			foreach (var p in points)
-				draw.DrawPoint(p.X, p.Y, size);
+				draw.DrawPoint(p[0], p[1], size);
 			draw.Finish();
 			window.RenderFrame();
 		}
+
+        public void DrawPoints(System.Drawing.PointF[] points, float size)
+        {
+            window.SetProgram(bp);
+            var draw = bp.Draw().Fill(Color.Black);
+            foreach (var p in points)
+                draw.DrawPoint(p.X, p.Y, size);
+            draw.Finish();
+            window.RenderFrame();
+        }
 
 		public System.Drawing.Size Size
 		{

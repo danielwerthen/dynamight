@@ -90,6 +90,15 @@ namespace Graphics
             return this;
         }
 
+        public QuickDraw DrawPoints(IEnumerable<float[]> points, double size = 1)
+        {
+            if (points == null)
+                return null;
+            foreach (var p in points)
+                this.DrawPoint(p[0], p[1], size);
+            return this;
+        }
+
 		public QuickDraw DrawPoint(Point p)
 		{
 			fast[p.X, p.Y] = this.color;
