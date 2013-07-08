@@ -33,7 +33,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 { (float)ir2rgbExtrin.Data[1,0], (float)ir2rgbExtrin.Data[1,1], (float)ir2rgbExtrin.Data[1,2], (float)ir2rgbExtrin.Data[1,3] },
                 { (float)ir2rgbExtrin.Data[2,0], (float)ir2rgbExtrin.Data[2,1], (float)ir2rgbExtrin.Data[2,2], (float)ir2rgbExtrin.Data[2,3] },
                 {0,0,0,1}
-            }).Inverse();
+            });
 
             var rt = extrinsic.ExtrinsicMatrix;
             K2G = DenseMatrix.OfArray(new Single[,] 
@@ -42,16 +42,23 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 { (float)rt.Data[1,0], (float)rt.Data[1,1], (float)rt.Data[1,2], (float)rt.Data[1,3] },
                 { (float)rt.Data[2,0], (float)rt.Data[2,1], (float)rt.Data[2,2], (float)rt.Data[2,3] },
                 {0,0,0,1}
-            }).Inverse() * IR2RGB;
+            }).Inverse();
         }
 
         public float[] ToGlobal(SkeletonPoint point)
         {
-            var start = new DenseVector(new float[] { point.X, point.Y, -point.Z, 1 });
+            //var colorPoint = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
+            //var cpp = new System.Drawing.PointF(colorPoint.X, colorPoint.Y);
+            //var undistorted = intrinsic.Undistort(new System.Drawing.PointF[] { cpp }, null, null).First();
+            //var v = new DenseVector(new float[] { undistorted.X, undistorted.Y, 1, 1 });
+            //var gv = K2G.Multiply(v);
+            //return gv.ToArray();
+
+            var start = new DenseVector(new float[] { point.X, point.Y, point.Z, 1 });
 
             var result = K2G.Multiply(start)
                 .ToArray();
-            
+
             return result;
         }
 

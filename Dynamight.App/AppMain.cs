@@ -283,6 +283,11 @@ namespace Dynamight.App
             return result;
         }
 
+        public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, CalibrationResult cameraResult, PointF[][] cacalibdata)
+        {
+            return StereoCalibration.CalibrateIR(sensor, camera, projector, cameraResult, cacalibdata, new Size(7,4), 0.05f);
+        }
+
         static void Main(string[] args)
         {
             var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
@@ -292,26 +297,37 @@ namespace Dynamight.App
             StereoCalibration.DebugWindow = window;
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
+            
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
+
+            
             Projector projector = new Projector();
 
             PointF[][] data;
             var cc = CalibrateCamera(camera, projector, out data);
             var pc = CalibrateProjector(camera, projector, cc, data);
+            var ic = CalibrateIR(sensor, camera, projector, cc, data);
 
 
-            if (true)
+            if (false)
             {
 
                 var joints = DeSerializeObject<SkeletonPoint[]>("skeleton.xml");
                 var kc2 = new KinectCalibrator(sensor, cc);
+                var gour = joints.Select(p => kc2.ToGlobal(p)).ToArray();
+                var ourway = cc.Transform(gour);
+                var apiway = joints.Select(p => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(p, ColorImageFormat.RgbResolution1280x960Fps12))
+                    .Select(p => new PointF(p.X, p.Y)).ToArray();
+                var projway = pc.Transform(gour);
+                var pic = new Bitmap("reference.bmp");
+                QuickDraw.Start(pic).Color(Color.Green).DrawPoint(ourway, 5)
+                    .Color(Color.Red).DrawPoint(apiway, 5).Finish();
+                window.DrawBitmap(pic);
+                projector.DrawPoints(projway, 5);
                 var globals = kc2.ToGlobal(joints).ToArray();
                 var campoints = cc.Transform(globals);
                 var projpoints = pc.Transform(globals);
                 projector.DrawBackground(Color.Black);
-                var pic = new Bitmap("reference.bmp");
-                QuickDraw.Start(pic).DrawPoint(campoints, 5).Finish();
-                window.DrawBitmap(pic);
                 projector.DrawPoints(projpoints, 5);
                 while (true)
                     Thread.Sleep(500);
@@ -319,28 +335,26 @@ namespace Dynamight.App
 
 
 
-
             sensor.Stop();
             sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
-            sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
+            //sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
             sensor.SkeletonStream.Enable();
             sensor.Start();
             projector.DrawBackground(System.Drawing.Color.Black);
-            //var peas = new float[][] {
-            //    new float[] { 0f, 0f, 0f },
-            //    new float[] { 0.1f, 0f, 0f },
-            //    new float[] { 0f, 0.1f, 0f },
-            //    new float[] { 0f, 0f, 0.1f },
-            //};
-            //var tpe = pc.Transform(peas);
-            //var tpp = cc.Transform(peas);
-            //var test = tpe.Select(row => new PointF(-row.X, -row.Y)).ToArray();
-            //var cp = camera.TakePicture(0);
-            //QuickDraw.Start(cp).DrawPoint(tpp, 5).Finish();
-            //window.DrawBitmap(cp);
-            //projector.DrawPoints(tpe, 5);
+            var peas = new float[][] {
+                new float[] { 0f, 0f, 0.0f },
+                new float[] { 0.5f, 0f, 0.0f },
+                new float[] { 0f, -0.5f, 0.0f },
+                new float[] { 0.5f, -0.5f, 0.0f },
+            };
+            var tpe = pc.Transform(peas);
+            var tpp = cc.Transform(peas);
+            projector.DrawPoints(tpe, 25);
+            var pic2 = camera.TakePicture(0);
+            QuickDraw.Start(pic2).Color(Color.Green).DrawPoint(tpp, 15).Finish();
+            window.DrawBitmap(pic2);
 
-            var kc = new KinectCalibrator(sensor, cc);
+            var kc = new KinectCalibrator(sensor, ic);
 
             while (sensor.IsRunning)
             {
@@ -355,15 +369,29 @@ namespace Dynamight.App
                     else
                         continue;
                     var allJoints = skeletons.Where(row => row.TrackingState == SkeletonTrackingState.Tracked)
-                        .SelectMany(skeleton => skeleton.Joints.Where(joint => joint.TrackingState == JointTrackingState.Tracked && joint.JointType == JointType.HandRight));
-                    var points = kc.ToGlobal(allJoints.Select(ro => ro.Position)).ToArray();
+                        .SelectMany(skeleton => skeleton.Joints.Where(joint => joint.TrackingState == JointTrackingState.Tracked)).ToArray();// && joint.JointType == JointType.HandRight));
+                    var jpoints = allJoints.Select(j => j.Position).ToArray();
+                    var points = kc.ToGlobal(jpoints).ToArray();
                     if (points.Length > 0)
                     {
+                        //Console.Clear();
+                        //for (var i = 0; i < allJoints.Length; i++)
+                        //{
+                        //    Console.WriteLine("{0}: ({1}, {2}, {3})",
+                        //        allJoints[i].JointType.ToString(),
+                        //        points[i][0],
+                        //        points[i][1],
+                        //        points[i][2]);
+                        //}
                         var projp = pc.Transform(points.Concat(new float[][] { new float[] {0f,0f,0f} }).ToArray());
-                        //var camp = cc.Transform(points);
-                        projector.DrawPoints(projp, 15);
+                        var camp = jpoints.Select(p => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(p, sensor.ColorStream.Format))
+                            .Select(ip => new PointF(1280 - ip.X, ip.Y)).ToArray();
+                        
+                        var camp2 = cc.Transform(points);
+                        projector.DrawPoints(projp, 10);
                         var cp = camera.TakePicture(0);
-                        //QuickDraw.Start(cp).DrawPoint(camp, 5).Finish();
+                        QuickDraw.Start(cp).Color(Color.Red).DrawPoint(camp2, 5)
+                            .Color(Color.Green).DrawPoint(camp, 5).Finish();
                         window.DrawBitmap(cp);
                         //var ppoints = calib.TransformC2P(points);
                         //qd.DrawPoint(ppoints, 5);

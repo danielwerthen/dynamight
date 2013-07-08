@@ -89,6 +89,30 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
+        public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, CalibrationResult cameraResult, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
+        {
+            var depthPoints = Range.OfInts(640).SelectMany(x => Range.OfInts(480).Select(y => new DepthImagePoint()
+            {
+                X = x,
+                Y = y,
+                Depth = 1
+            })).ToArray();
+            var colorPoints = depthPoints.Select(dp => sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, dp, ColorImageFormat.RgbResolution1280x960Fps12)).ToArray();
+            var dst = depthPoints.Select(dp => new PointF(dp.X, dp.Y)).ToArray();
+            var src = colorPoints.Select(c => new PointF(c.X, c.Y)).ToArray();
+            var hm = Emgu.CV.CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.DEFAULT, 2);
+            var globals = GenerateCheckerBoard(cameraPattern, checkerboardSize, 0);
+            var globalCorners = cacalibdata.Select(row => globals).ToArray();
+            var proj = cacalibdata.Select(cs => cs.Select(c => new PointF(c.X, c.Y)).ToArray()).ToArray();
+            foreach (var p in proj)
+                hm.ProjectPoints(p);
+            IntrinsicCameraParameters projIntrin = new IntrinsicCameraParameters();
+            ExtrinsicCameraParameters[] projExtrins;
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projExtrins);
+
+            return new CalibrationResult() { Intrinsic = projIntrin, Extrinsic = projExtrins.First() };
+        }
+
         public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
         {
             List<PointF[]> cameraCorners = new List<PointF[]>();
