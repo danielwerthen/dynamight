@@ -85,7 +85,9 @@
       <DependentUpon>StructuredLightWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="ThreePointCalibration.cs" />
+    <Compile Include="TransformExhaust.cs" />
     <Compile Include="Utils\Camera.cs" />
+    <Compile Include="Utils\DepthCamera.cs" />
     <Compile Include="Utils\GridSmoothing.cs" />
     <Compile Include="Utils\Projector.cs" />
     <Compile Include="Utils\ProjectorForm.cs">

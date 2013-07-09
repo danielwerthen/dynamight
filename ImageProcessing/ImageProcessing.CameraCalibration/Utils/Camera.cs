@@ -249,20 +249,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 				if (frame == null)
 					return null;
 				return ImageToBitmap(frame);
-				//detect if the format has changed to resize buffer
-				var imageBuffer = new byte[frame.PixelDataLength];
-				// We must obtain a pointer to the first scanline of the top-down data.
-				// This happens to be the start of the buffer.
-				unsafe
-				{
-					fixed (void* p = imageBuffer)
-					{
-						IntPtr ptr = new IntPtr(p);
-						PixelFormat format = System.Drawing.Imaging.PixelFormat.Format32bppRgb;
-						result = new Bitmap(frame.Width, frame.Height, (4 * frame.Width), format, ptr);
-					}
-				}
-				frame.CopyPixelDataTo(imageBuffer);
 			}
 			return result;
 		}

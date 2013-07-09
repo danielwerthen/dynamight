@@ -285,7 +285,7 @@ namespace Dynamight.App
 
         public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, CalibrationResult cameraResult, PointF[][] cacalibdata)
         {
-            return StereoCalibration.CalibrateIR(sensor, camera, projector, cameraResult, cacalibdata, new Size(7,4), 0.05f);
+            return StereoCalibration.CalibrateIR(sensor, camera, projector, new Size(7,4), 0.05f);
         }
 
         static void Main(string[] args)
@@ -309,7 +309,7 @@ namespace Dynamight.App
             var ic = CalibrateIR(sensor, camera, projector, cc, data);
 
 
-            if (false)
+            if (true)
             {
 
                 var joints = DeSerializeObject<SkeletonPoint[]>("skeleton.xml");

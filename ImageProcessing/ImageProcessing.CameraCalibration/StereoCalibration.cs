@@ -89,28 +89,27 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
-        public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, CalibrationResult cameraResult, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
+        public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, Size cameraPattern, float checkerboardSize)
         {
-            var depthPoints = Range.OfInts(640).SelectMany(x => Range.OfInts(480).Select(y => new DepthImagePoint()
-            {
-                X = x,
-                Y = y,
-                Depth = 1
-            })).ToArray();
-            var colorPoints = depthPoints.Select(dp => sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, dp, ColorImageFormat.RgbResolution1280x960Fps12)).ToArray();
-            var dst = depthPoints.Select(dp => new PointF(dp.X, dp.Y)).ToArray();
-            var src = colorPoints.Select(c => new PointF(c.X, c.Y)).ToArray();
-            var hm = Emgu.CV.CameraCalibration.FindHomography(src, dst, Emgu.CV.CvEnum.HOMOGRAPHY_METHOD.DEFAULT, 2);
-            var globals = GenerateCheckerBoard(cameraPattern, checkerboardSize, 0);
-            var globalCorners = cacalibdata.Select(row => globals).ToArray();
-            var proj = cacalibdata.Select(cs => cs.Select(c => new PointF(c.X, c.Y)).ToArray()).ToArray();
-            foreach (var p in proj)
-                hm.ProjectPoints(p);
-            IntrinsicCameraParameters projIntrin = new IntrinsicCameraParameters();
-            ExtrinsicCameraParameters[] projExtrins;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projExtrins);
-
-            return new CalibrationResult() { Intrinsic = projIntrin, Extrinsic = projExtrins.First() };
+            projector.DrawBackground(Color.Black);
+            var camCorners = GetCameraCorners(camera, cameraPattern);
+            var dc = new DepthCamera(sensor, DepthImageFormat.Resolution640x480Fps30);
+            var dimg = dc.TakeImage();
+            var depthCorners = camCorners.Select(c => dimg.GetClosest(new ColorImagePoint() { X = (int)(Math.Round((camera.Size.Width - 1 - c.X), 0)), Y = (int)(Math.Round(c.Y, 0)) })).ToArray();
+            var p1 = depthCorners[0 + 0 * cameraPattern.Width];
+            var p0 = depthCorners[0 + (cameraPattern.Height - 1) * cameraPattern.Width];
+            var p2 = depthCorners[(cameraPattern.Width - 1) + (cameraPattern.Height - 1) * cameraPattern.Width];
+            var cp0 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p0, ColorImageFormat.RgbResolution1280x960Fps12);
+            var cp1 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p1, ColorImageFormat.RgbResolution1280x960Fps12);
+            var cp2 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p2, ColorImageFormat.RgbResolution1280x960Fps12);
+            var pic = camera.TakePicture(0);
+            //QuickDraw.Start(pic).DrawPoint(cp0.X, cp0.Y, 5)
+            //    .DrawPoint(cp1.X, cp1.Y, 5)
+            //    .DrawPoint(cp2.X, cp2.Y, 5).Finish();
+            var cc = depthCorners.Select(p => sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p, ColorImageFormat.RgbResolution1280x960Fps12)).ToArray();
+            QuickDraw.Start(pic).DrawPoint(cc.Select(p => new PointF(p.X, p.Y)).ToArray(), 5).Finish();
+            DebugWindow.DrawBitmap(pic);
+            return new CalibrationResult() { };
         }
 
         public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)

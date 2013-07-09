@@ -16,7 +16,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         CV.ExtrinsicCameraParameters extrinsic;
         KinectSensor sensor;
         Matrix<float> IR2RGB;
-        Matrix<float> K2G;
+        public Matrix<float> K2G;
         public KinectCalibrator(KinectSensor sensor, CalibrationResult calib)
         {
             this.intrinsic = calib.Intrinsic;
