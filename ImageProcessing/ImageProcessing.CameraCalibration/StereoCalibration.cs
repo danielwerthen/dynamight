@@ -957,7 +957,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             var test = irt.Multiply(new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { 1, 1, 1, 1 }));
             var ttest2 = Emgu.CV.CameraCalibration.ProjectPoints(new MCvPoint3D32f[] { new MCvPoint3D32f((float)test[0], (float)test[1], (float)test[2]) }, Extrinsic, Intrinsic);
             var ttest3 = Intrinsic.Undistort(ttest2, null, null);
-            return tt.Select(v => new float[] { (float)v[0], (float)v[1], (float)v[2] }).ToArray();
+            return tt.Select(v => new float[] { (float)(v[0] / v[3]), (float)(v[1] / v[3]), (float)(v[2] / v[3]) }).ToArray();
             //return ids.Select(i => new float[] { (float)tr[i][0], (float)tr[i][1], (float)tr[i][2] }).ToArray();
         }
 

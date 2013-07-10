@@ -297,16 +297,30 @@ namespace Dynamight.App
             StereoCalibration.DebugWindow = window;
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
-            
+
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
 
-            
+
             Projector projector = new Projector();
 
             PointF[][] data;
             var cc = CalibrateCamera(camera, projector, out data);
             var pc = CalibrateProjector(camera, projector, cc, data);
-            var ic = CalibrateIR(sensor, camera, projector, cc, data);
+            //var ic = CalibrateIR(sensor, camera, projector, cc, data);
+
+            {
+                var pest = new float[][] {
+                    new float[] { 0.5f, -0.5f, 0.0f },
+                    new float[] { 0.5f, -0.5f, 0.1f },
+                    new float[] { 0.5f, -0.5f, 0.2f },
+                    new float[] { 0.5f, -0.5f, 0.3f },
+                    new float[] { 0.5f, -0.5f, 0.4f },
+                    new float[] { 0.5f, -0.5f, 0.5f },
+                    new float[] { 0.5f, -0.5f, 0.6f },
+                };
+                var pestp = cc.Transform(pest);
+                var pestb = cc.InverseTransform(pestp, 0.5f);
+            }
 
 
             if (true)
@@ -354,7 +368,7 @@ namespace Dynamight.App
             QuickDraw.Start(pic2).Color(Color.Green).DrawPoint(tpp, 15).Finish();
             window.DrawBitmap(pic2);
 
-            var kc = new KinectCalibrator(sensor, ic);
+            var kc = new KinectCalibrator(sensor, cc);
 
             while (sensor.IsRunning)
             {
@@ -383,10 +397,10 @@ namespace Dynamight.App
                         //        points[i][1],
                         //        points[i][2]);
                         //}
-                        var projp = pc.Transform(points.Concat(new float[][] { new float[] {0f,0f,0f} }).ToArray());
+                        var projp = pc.Transform(points.Concat(new float[][] { new float[] { 0f, 0f, 0f } }).ToArray());
                         var camp = jpoints.Select(p => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(p, sensor.ColorStream.Format))
                             .Select(ip => new PointF(1280 - ip.X, ip.Y)).ToArray();
-                        
+
                         var camp2 = cc.Transform(points);
                         projector.DrawPoints(projp, 10);
                         var cp = camera.TakePicture(0);
