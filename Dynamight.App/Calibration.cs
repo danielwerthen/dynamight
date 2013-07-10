@@ -18,77 +18,6 @@ namespace Dynamight.App
 {
     public class Calibration
     {
-        /// <summary>
-        /// Serializes an object.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="serializableObject"></param>
-        /// <param name="fileName"></param>
-        public static void SerializeObject<T>(T serializableObject, string fileName)
-        {
-            if (serializableObject == null) { return; }
-
-            try
-            {
-                XmlDocument xmlDocument = new XmlDocument();
-                XmlSerializer serializer = new XmlSerializer(serializableObject.GetType());
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    serializer.Serialize(stream, serializableObject);
-                    stream.Position = 0;
-                    xmlDocument.Load(stream);
-                    xmlDocument.Save(fileName);
-                    stream.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                //Log exception here
-            }
-        }
-
-
-        /// <summary>
-        /// Deserializes an xml file into an object list
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        public static T DeSerializeObject<T>(string fileName)
-        {
-            if (string.IsNullOrEmpty(fileName)) { return default(T); }
-
-            T objectOut = default(T);
-
-            try
-            {
-                string attributeXml = string.Empty;
-
-                XmlDocument xmlDocument = new XmlDocument();
-                xmlDocument.Load(fileName);
-                string xmlString = xmlDocument.OuterXml;
-
-                using (StringReader read = new StringReader(xmlString))
-                {
-                    Type outType = typeof(T);
-
-                    XmlSerializer serializer = new XmlSerializer(outType);
-                    using (XmlReader reader = new XmlTextReader(read))
-                    {
-                        objectOut = (T)serializer.Deserialize(reader);
-                        reader.Close();
-                    }
-
-                    read.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                //Log exception here
-            }
-
-            return objectOut;
-        }
 
         static void TakePics(Camera camera, Projector projector)
         {
@@ -104,7 +33,7 @@ namespace Dynamight.App
                 var name = Console.ReadLine();
                 var refer = camera.TakePicture(0);
                 refer.Save(name + ".bmp");
-                SerializeObject(data, name + ".xml");
+                Utils.SerializeObject(data, name + ".xml");
                 Console.WriteLine("Enter command: (n)ew pic, (r)eturn");
                 var command = Console.ReadLine();
                 if (command == "r") return;
@@ -122,7 +51,7 @@ namespace Dynamight.App
                     break;
                 files.Add(str);
             }
-            var data = files.Select(str => DeSerializeObject<CalibrationData>(str + ".xml")).ToArray();
+            var data = files.Select(str => Utils.DeSerializeObject<CalibrationData>(str + ".xml")).ToArray();
             var calib = StereoCalibration.Calibrate(data, camera, projector, new Size(7, 4), 0.05f);
             projector.DrawBackground(System.Drawing.Color.Black);
             var peas = new float[][] {
@@ -170,10 +99,10 @@ namespace Dynamight.App
             while (true)
             {
                 if (File.Exists(filename) && !reload)
-                    return DeSerializeObject<StereoCalibrationResult>(filename);
+                    return Utils.DeSerializeObject<StereoCalibrationResult>(filename);
                 CalibrationData[] data;
                 if (File.Exists(datafile) && !reloadData)
-                    data = DeSerializeObject<CalibrationData[]>(datafile);
+                    data = Utils.DeSerializeObject<CalibrationData[]>(datafile);
                 else
                 {
                     data = StereoCalibration.GatherData(projector, camera, new Size(7, 4), 10,
@@ -182,10 +111,10 @@ namespace Dynamight.App
                             Console.WriteLine("Pass: " + pass + " done. Reject or Approve? (r/a).");
                             return Console.ReadLine() != "r";
                         });
-                    SerializeObject(data, datafile);
+                    Utils.SerializeObject(data, datafile);
                 }
                 var result = StereoCalibration.Calibrate(data, camera, projector, new Size(7, 4), 0.05f);
-                SerializeObject(result, filename);
+                Utils.SerializeObject(result, filename);
                 return result;
                 Console.WriteLine("Proceed? (y/n)");
                 var command = Console.ReadLine();
@@ -203,7 +132,7 @@ namespace Dynamight.App
             projector.DrawBackground(Color.Black);
             var list = new List<PointF[]>();
             if (!reloadData && File.Exists(datafile))
-                list = DeSerializeObject<List<PointF[]>>(datafile);
+                list = Utils.DeSerializeObject<List<PointF[]>>(datafile);
             else
             {
                 while (true)
@@ -232,6 +161,7 @@ namespace Dynamight.App
                 }
                 var cornerTask = Task.Run(() =>
                 {
+                    Console.Write("Progress: ");
                     while (corners.Count < passes)
                     {
                         Bitmap img;
@@ -239,24 +169,42 @@ namespace Dynamight.App
                         {
                             var cc = StereoCalibration.GetCameraCorners(img, pattern);
                             if (cc != null)
+                            {
                                 corners.Enqueue(cc);
+                                Console.Write("=");
+                            }
+                            img.Dispose();
                         }
                         Thread.Yield();
                     }
+                    Console.Write("> Done!\n");
                 });
                 while (corners.Count < passes)
                 {
-                    if (pics.Count < 12)
+                    if (pics.Count < passes * 2)
                     {
+                        Thread.Sleep(200);
                         projector.DrawBackground(Color.Black);
                         var pic = camera.TakePicture();
                         projector.DrawBackground(Color.White);
+                        Thread.Sleep(50);
                         projector.DrawBackground(Color.Black);
                         pics.Enqueue(pic);
                     }
                     else
                     {
-                        Thread.Sleep(500);
+                        while (pics.Count > 4 && corners.Count < passes)
+                        {
+                            Thread.Sleep(1000);
+                            Thread.Yield();
+                        }
+                        if (corners.Count < passes)
+                        {
+                            for (int i = 255; i >= 0; i--)
+                            {
+                                projector.DrawBackground(Color.FromArgb(i, i, i));
+                            }
+                        }
                     }
                     Thread.Yield();
                 }
@@ -264,7 +212,9 @@ namespace Dynamight.App
                 foreach (var cc in corners)
                     list.Add(cc);
                 if (save)
-                    SerializeObject(list, datafile);
+                    Utils.SerializeObject(list, datafile);
+                foreach (var img in pics)
+                    img.Dispose();
 
                 //while (true)
                 //{
@@ -290,35 +240,22 @@ namespace Dynamight.App
                 //        break;
                 //    }
                 //}
-                projector.DrawBackground(Color.Green);
-                Thread.Sleep(120);
                 Console.WriteLine("Data gather done. Press enter to calculate calibration.");
                 Console.ReadLine();
             }
 
             CalibrationResult calib;
             if (!reloadCalc && File.Exists(calcfile))
-                calib = DeSerializeObject<CalibrationResult>(calcfile);
+                calib = Utils.DeSerializeObject<CalibrationResult>(calcfile);
             else
             {
             
                 calib = StereoCalibration.CalibrateCamera(list.ToArray()
                     , camera, new Size(7, 4), 0.05f);
                 if (save)
-                    SerializeObject(calib, calcfile);
+                    Utils.SerializeObject(calib, calcfile);
             }
             data = list.ToArray();
-            projector.DrawBackground(System.Drawing.Color.Black);
-            var peas = new float[][] {
-                new float[] { 0f, 0f, 0f },
-                new float[] { 0.1f, 0f, 0f },
-                new float[] { 0f, 0.1f, 0f },
-                new float[] { 0f, 0f, 0.1f },
-            };
-            var t = calib.Transform(peas);
-            var cp = camera.TakePicture(0);
-            QuickDraw.Start(cp).DrawPoint(t, 5).Finish();
-            StereoCalibration.DebugWindow.DrawBitmap(cp);
             return calib;
         }
 
@@ -327,20 +264,23 @@ namespace Dynamight.App
             CalibrationResult result;
             string datafile = "projectorcalibration.xml";
             if (!reload && File.Exists(datafile))
-                result = DeSerializeObject<CalibrationResult>(datafile);
+                result = Utils.DeSerializeObject<CalibrationResult>(datafile);
             else
             {
                 result = StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7, 4), 0.05f);
                 if (save)
-                    SerializeObject(result, datafile);
+                    Utils.SerializeObject(result, datafile);
             }
             return result;
         }
 
+        public const string KinectDefaultFileName = "kinectCalib.xml";
+        public const string ProjectorDefaultFileName = "projCalib.xml";
+
         public static void Calibrate(string[] args)
         {
-            var camfile = args.FirstOrDefault() ?? "kinectCalib.xml";
-            var projfile = args.Skip(1).FirstOrDefault() ?? "projCalib.xml";
+            var camfile = args.FirstOrDefault() ?? KinectDefaultFileName;
+            var projfile = args.Skip(1).FirstOrDefault() ?? ProjectorDefaultFileName;
             var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
             window.Load();
@@ -367,15 +307,15 @@ namespace Dynamight.App
                 var tpe = pc.Transform(peas);
                 var tpp = cc.Transform(peas);
                 projector.DrawPoints(tpe, 25);
-                var pic2 = camera.TakePicture(0);
+                var pic2 = camera.TakePicture(5);
                 QuickDraw.Start(pic2).Color(Color.Green).DrawPoint(tpp, 15).Finish();
                 window.DrawBitmap(pic2);
                 Console.WriteLine("Save result? (y/n)");
                 proceed = Console.ReadLine() == "y";
             } while (!proceed);
 
-            SerializeObject(cc, camfile);
-            SerializeObject(pc, projfile);
+            Utils.SerializeObject(cc, camfile);
+            Utils.SerializeObject(pc, projfile);
             window.Close();
             window.Dispose();
             projector.Close();
@@ -408,7 +348,7 @@ namespace Dynamight.App
             if (false)
             {
 
-                var joints = DeSerializeObject<SkeletonPoint[]>("skeleton.xml");
+                var joints = Utils.DeSerializeObject<SkeletonPoint[]>("skeleton.xml");
                 var kc2 = new KinectCalibrator(sensor, cc);
                 var gour = joints.Select(p => kc2.ToGlobal(p)).ToArray();
                 var ourway = cc.Transform(gour);
