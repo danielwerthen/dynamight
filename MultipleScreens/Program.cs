@@ -67,6 +67,7 @@ namespace MultipleScreens
 			cp.SetSize(8, 8);
 			double xrot = 0;
 			var corners = cp.GetCorners().ToArray();
+            cp.SetTransforms(0, 0, 0, 0.7,0,0);
 			window.RenderFrame();
 			//cp.Draw().Fill(Color.Black).DrawPoint((1.0 / (double)8.0) * 640.0, (1.0 / (double)5.0) * 480.0).Finish();
 			bp.Draw().Fill(Color.Black).DrawPoint(corners, 5).Finish();

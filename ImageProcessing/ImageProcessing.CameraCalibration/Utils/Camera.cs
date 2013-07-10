@@ -80,6 +80,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                     {
                         sensor.ColorFrameReady -= onFrame;
                         sensor.Stop();
+                        return;
                     }
                  }
             });

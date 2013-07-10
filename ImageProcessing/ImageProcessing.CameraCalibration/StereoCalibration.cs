@@ -89,29 +89,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
-        public static CalibrationResult CalibrateIR(KinectSensor sensor, Camera camera, Projector projector, Size cameraPattern, float checkerboardSize)
-        {
-            projector.DrawBackground(Color.Black);
-            var camCorners = GetCameraCorners(camera, cameraPattern);
-            var dc = new DepthCamera(sensor, DepthImageFormat.Resolution640x480Fps30);
-            var dimg = dc.TakeImage();
-            var depthCorners = camCorners.Select(c => dimg.GetClosest(new ColorImagePoint() { X = (int)(Math.Round((camera.Size.Width - 1 - c.X), 0)), Y = (int)(Math.Round(c.Y, 0)) })).ToArray();
-            var p1 = depthCorners[0 + 0 * cameraPattern.Width];
-            var p0 = depthCorners[0 + (cameraPattern.Height - 1) * cameraPattern.Width];
-            var p2 = depthCorners[(cameraPattern.Width - 1) + (cameraPattern.Height - 1) * cameraPattern.Width];
-            var cp0 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p0, ColorImageFormat.RgbResolution1280x960Fps12);
-            var cp1 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p1, ColorImageFormat.RgbResolution1280x960Fps12);
-            var cp2 = sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p2, ColorImageFormat.RgbResolution1280x960Fps12);
-            var pic = camera.TakePicture(0);
-            //QuickDraw.Start(pic).DrawPoint(cp0.X, cp0.Y, 5)
-            //    .DrawPoint(cp1.X, cp1.Y, 5)
-            //    .DrawPoint(cp2.X, cp2.Y, 5).Finish();
-            var cc = depthCorners.Select(p => sensor.CoordinateMapper.MapDepthPointToColorPoint(DepthImageFormat.Resolution640x480Fps30, p, ColorImageFormat.RgbResolution1280x960Fps12)).ToArray();
-            QuickDraw.Start(pic).DrawPoint(cc.Select(p => new PointF(p.X, p.Y)).ToArray(), 5).Finish();
-            DebugWindow.DrawBitmap(pic);
-            return new CalibrationResult() { };
-        }
-
         public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
         {
             List<PointF[]> cameraCorners = new List<PointF[]>();
@@ -128,8 +105,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 var pcs = projector.DrawCheckerboard(pattern, 
                     rotx,
                     roty,
-                    rotz, 0.7);
-                var ccs = GetCameraCorners(camera, cpattern, false);
+                    rotz, 0.5);
+                var img = camera.TakePicture(3);
+                var ccs = GetCameraCorners(img, cpattern, false);
                 if (ccs != null)
                 {
 
@@ -567,14 +545,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return points.OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
         }
 
-        private static PointF[] GetCameraCorners(Camera camera, Size pattern, bool RB = false)
+        public static PointF[] GetCameraCorners(Bitmap image, Size pattern, bool RB = false)
         {
-            var nolight = camera.TakePicture(2);
             PointF[] cameraCorners;
             if (RB)
-                cameraCorners = DetectCornersRB(nolight, pattern);
+                cameraCorners = DetectCornersRB(image, pattern);
             else
-                cameraCorners = DetectCornersBW(nolight, pattern);
+                cameraCorners = DetectCornersBW(image, pattern);
             return cameraCorners;
         }
 
@@ -586,12 +563,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             //Detect corners in camera space
             PointF[] cameraCorners;
             Bitmap withCorners;
-            do
-            {
-                withCorners = camera.TakePicture();
-                cameraCorners = GetCameraCorners(camera, pattern, RB);
-
-            } while (cameraCorners == null);
+            withCorners = camera.TakePicture();
+            var img = camera.TakePicture(2);
+            cameraCorners = GetCameraCorners(img, pattern, RB);
+            if (cameraCorners == null)
+                return null;
 
             if (DebugWindow != null)
             {
@@ -892,48 +868,48 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return res;
         }
 
-        public float[][] HTransform(PointF[] points, float z)
+        public MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> InverseExtrinsic(float depth)
         {
-            var xs = Range.OfDoubles(1, -1, 0.1).ToArray();
-            var ys = Range.OfDoubles(1, -1, 0.1).ToArray();
-            var dst = xs.SelectMany(x => ys.Select(y => new float[] { (float)x, (float)y, z })).ToArray();
-            var src = Intrinsic.Undistort(Transform(dst), null, null);
-            var hm = Emgu.CV.CameraCalibration.GetPerspectiveTransform(src, dst.Select(r => new PointF(r[0], r[1])).ToArray());
-            var res = points.Select(p => new PointF(p.X, p.Y)).ToArray();
-            var undistorted = Intrinsic.Undistort(res, null, null);
-            
-            hm.ProjectPoints(undistorted);
-            return res.Select(r => new float[] { r.X, r.Y, z }).ToArray();
- 
-        }
-
-        public float[][] InverseTransform(float[][] points)
-        {
-            //var undistorted = Intrinsic.Undistort(points.Select(p => new PointF(p[0], p[1])).ToArray(), null, null);
-            var ud = Range.OfInts(points.Length).Select(i => new MathNet.Numerics.LinearAlgebra.Single.DenseVector(new float[] { points[i][0], points[i][1], points[i][2], 1 })).ToArray();
+            float z = depth;
+            if (z == 0)
+                z = 0.0001f;
             var rt = Extrinsic.ExtrinsicMatrix;
-            var t = Extrinsic.TranslationVector;
-            var ki = new ExtrinsicCameraParameters(
-              new RotationVector3D(new double[] { 0.56 * Math.PI / 180.0, 0.07 * Math.PI / 180.0, +0.05 * Math.PI / 180.0 }),
-              new Matrix<double>(new double[,] { { -0.0256 }, {0.00034 }, {0.00291 } })).ExtrinsicMatrix;
 
-            MathNet.Numerics.LinearAlgebra.Single.DenseMatrix ki2 = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfArray(new Single[,] 
-            {
-                { (float)ki.Data[0,0], (float)ki.Data[0,1], (float)ki.Data[0,2], (float)ki.Data[0,3] },
-                { (float)ki.Data[1,0], (float)ki.Data[1,1], (float)ki.Data[1,2], (float)ki.Data[1,3] },
-                { (float)ki.Data[2,0], (float)ki.Data[2,1], (float)ki.Data[2,2], (float)ki.Data[2,3] },
-                {0,0,0,1}
-            });
-
-            MathNet.Numerics.LinearAlgebra.Single.DenseMatrix rt2 = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfArray(new Single[,] 
+            MathNet.Numerics.LinearAlgebra.Single.DenseMatrix rt2 = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfArray(new float[,] 
             {
                 { (float)rt.Data[0,0], (float)rt.Data[0,1], (float)rt.Data[0,2], (float)rt.Data[0,3] },
                 { (float)rt.Data[1,0], (float)rt.Data[1,1], (float)rt.Data[1,2], (float)rt.Data[1,3] },
                 { (float)rt.Data[2,0], (float)rt.Data[2,1], (float)rt.Data[2,2], (float)rt.Data[2,3] },
-                {0,0,0,1}
+                {0,0,1 / z,0}
             });
-            var rti = ki2 * rt2.Inverse();
-            return ud.Select(v => rti.Multiply(v)).Select(v => v.ToArray()).ToArray();
+            return rt2.Inverse();
+        }
+
+        public float[] InverseTransform(PointF point, float depth)
+        {
+            var irt = InverseExtrinsic(depth);
+            return InverseTransform(point, irt);
+        }
+
+        public float[] InverseTransform(PointF point, MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> irt)
+        {
+            var points = new PointF[] { point };
+            var undistorted = Intrinsic.Undistort(points, null, null);
+            var ids = new int[undistorted.Length];
+            for (var i = 0; i < ids.Length; i++) ids[i] = i;
+            var threes = ids.Select(i => new MathNet.Numerics.LinearAlgebra.Single.DenseVector(new float[] { undistorted[i].X, undistorted[i].Y, 1, 1 })).ToArray();
+            var tt = threes.Select(v => irt.Multiply(v)).ToArray();
+            return tt.Select(v => new float[] { (v[0] / v[3]), (v[1] / v[3]), (v[2] / v[3]) }).First();
+        }
+
+        public float[][] InverseTransform(PointF[] points, MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> irt)
+        {
+            var undistorted = Intrinsic.Undistort(points, null, null);
+            var ids = new int[undistorted.Length];
+            for (var i = 0; i < ids.Length; i++) ids[i] = i;
+            var threes = ids.Select(i => new MathNet.Numerics.LinearAlgebra.Single.DenseVector(new float[] { undistorted[i].X, undistorted[i].Y, 1, 1 })).ToArray();
+            var tt = threes.Select(v => irt.Multiply(v)).ToArray();
+            return tt.Select(v => new float[] { (v[0] / v[3]), (v[1] / v[3]), (v[2] / v[3]) }).ToArray();
         }
 
         public float[][] InverseTransform(PointF[] points, float z)
@@ -947,40 +923,15 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 { rt.Data[0,0], rt.Data[0,1], rt.Data[0,2], rt.Data[0,3] },
                 { rt.Data[1,0], rt.Data[1,1], rt.Data[1,2], rt.Data[1,3] },
                 { rt.Data[2,0], rt.Data[2,1], rt.Data[2,2], rt.Data[2,3] },
-                {0,0,0,1}
+                {0,0,1 / z,0}
             });
             var irt = rt2.Inverse();
             var ids = new int[undistorted.Length];
             for (var i = 0; i < ids.Length; i++) ids[i] = i;
             var threes = ids.Select(i => new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { undistorted[i].X, undistorted[i].Y, 1, 1 })).ToArray();
             var tt = threes.Select(v => irt.Multiply(v)).ToArray();
-            var test = irt.Multiply(new MathNet.Numerics.LinearAlgebra.Double.DenseVector(new double[] { 1, 1, 1, 1 }));
-            var ttest2 = Emgu.CV.CameraCalibration.ProjectPoints(new MCvPoint3D32f[] { new MCvPoint3D32f((float)test[0], (float)test[1], (float)test[2]) }, Extrinsic, Intrinsic);
-            var ttest3 = Intrinsic.Undistort(ttest2, null, null);
             return tt.Select(v => new float[] { (float)(v[0] / v[3]), (float)(v[1] / v[3]), (float)(v[2] / v[3]) }).ToArray();
             //return ids.Select(i => new float[] { (float)tr[i][0], (float)tr[i][1], (float)tr[i][2] }).ToArray();
-        }
-
-        struct coord
-        {
-            public int x;
-            public int y;
-        }
-
-        public float[][] LookupInverse(PointF[] points, float z)
-        {
-            Dictionary<coord, float[]> lookup = new Dictionary<coord,float[]>();
-            var xs = Range.OfDoubles(1280, 0, 1).ToArray();
-            var ys = Range.OfDoubles(1280, 0, 1).ToArray();
-            var all = xs.SelectMany(x => ys.Select(y => new float[] { (float)x, (float)y, z })).ToArray();
-            var ids = new int[all.Length];
-            for (var i = 0; i < all.Length; i++)
-                ids[i] = i;
-            var locals = Transform(all);
-            foreach (var i in ids)
-                lookup[new coord() { x = (int)locals[i].X, y = (int)locals[i].Y }] = all[i];
-
-            return points.Select(p => lookup[new coord() { x = (int)Math.Round(p.X, 0), y = (int)Math.Round(p.Y, 0) }]).ToArray();
         }
 
         public double Intersect(MathNet.Numerics.LinearAlgebra.Generic.Vector<double> p0,

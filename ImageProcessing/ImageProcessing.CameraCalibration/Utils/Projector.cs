@@ -33,6 +33,12 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             cp = new CheckerboardProgram();
 		}
 
+        public void Close()
+        {
+            window.Close();
+            window.Dispose();
+        }
+
 		public void SetBounds(RectangleF bounds)
 		{
 			//window.SetBounds(bounds);

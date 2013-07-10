@@ -12,15 +12,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 {
     public class KinectCalibrator
     {
-        CV.IntrinsicCameraParameters intrinsic;
-        CV.ExtrinsicCameraParameters extrinsic;
+        CalibrationResult calib;
         KinectSensor sensor;
         Matrix<float> IR2RGB;
         public Matrix<float> K2G;
         public KinectCalibrator(KinectSensor sensor, CalibrationResult calib)
         {
-            this.intrinsic = calib.Intrinsic;
-            this.extrinsic = calib.Extrinsic;
+            this.calib = calib;
             this.sensor = sensor;
 
             var ir2rgbExtrin = new CV.ExtrinsicCameraParameters(
@@ -35,7 +33,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 {0,0,0,1}
             });
 
-            var rt = extrinsic.ExtrinsicMatrix;
+            var rt = calib.Extrinsic.ExtrinsicMatrix;
             K2G = DenseMatrix.OfArray(new Single[,] 
             {
                 { (float)rt.Data[0,0], (float)rt.Data[0,1], (float)rt.Data[0,2], (float)rt.Data[0,3] },
@@ -47,19 +45,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         public float[] ToGlobal(SkeletonPoint point)
         {
-            //var colorPoint = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
-            //var cpp = new System.Drawing.PointF(colorPoint.X, colorPoint.Y);
-            //var undistorted = intrinsic.Undistort(new System.Drawing.PointF[] { cpp }, null, null).First();
-            //var v = new DenseVector(new float[] { undistorted.X, undistorted.Y, 1, 1 });
-            //var gv = K2G.Multiply(v);
-            //return gv.ToArray();
-
-            var start = new DenseVector(new float[] { point.X, point.Y, point.Z, 1 });
-
-            var result = K2G.Multiply(start)
-                .ToArray();
-
-            return result;
+            var colorPoint = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
+            var cpp = new System.Drawing.PointF(1280 - colorPoint.X, colorPoint.Y);
+            var depth = new DenseVector(new float[] { point.X, point.Y, point.Z, 1 });
+            var tdepth = K2G.Multiply(IR2RGB.Multiply(depth));
+            var irt = calib.InverseExtrinsic(tdepth[2] / tdepth[3]);
+            var it = calib.InverseTransform(cpp, irt);
+            return it;
         }
 
         public float[] ToGlobal(Joint joint)
