@@ -12,11 +12,85 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
     public class DepthCamera
     {
         KinectSensor sensor;
-        
         public DepthCamera(KinectSensor sensor, DepthImageFormat format)
         {
             this.sensor = sensor;
             sensor.DepthStream.Enable(format);
+        }
+
+        public DepthImagePixel[] GetDepth(int wait, out Size? pixelSize)
+        {
+            pixelSize = null;
+            using (var frame = sensor.DepthStream.OpenNextFrame(wait))
+            {
+                if (frame == null)
+                    return null;
+                var depthPixels = new DepthImagePixel[sensor.DepthStream.FramePixelDataLength];
+                frame.CopyDepthImagePixelDataTo(depthPixels);
+                if (sensor.DepthStream.Format == DepthImageFormat.Resolution640x480Fps30)
+                {
+                    pixelSize = new Size(640, 480);
+                }
+                else if (sensor.DepthStream.Format == DepthImageFormat.Resolution320x240Fps30)
+                {
+                    pixelSize = new Size(320, 240);
+                }
+                else if (sensor.DepthStream.Format == DepthImageFormat.Resolution80x60Fps30)
+                {
+                    pixelSize = new Size(80, 60);
+                }
+                else
+                    throw new NotImplementedException();
+                
+                return depthPixels;
+            }
+        }
+
+        public DepthImagePoint[] GetDepth(int wait)
+        {
+            Size? size;
+            var data = GetDepth(wait, out size);
+            if (data == null)
+                return null;
+            var pixelSize = size.Value;
+            return Range.OfInts(pixelSize.Height).SelectMany(y => Range.OfInts(pixelSize.Width).Select((x) =>
+            {
+                var b = data[x + y * pixelSize.Width];
+
+                var dip = new DepthImagePoint()
+                {
+                    X = x,
+                    Y = y,
+                    Depth = b.Depth
+                };
+                return dip;
+            })).ToArray();
+        }
+
+        public DepthImagePoint[] GetForeground(DepthImagePixel[] background, Size pixelSize, short thresh = 30, int wait = 10000)
+        {
+
+            Size? pixels;
+            var newData = GetDepth(wait, out pixels);
+            if (newData == null)
+                return null;
+            if (pixels.Value.Height != pixelSize.Height || pixels.Value.Width != pixels.Value.Width)
+                throw new Exception("Different pixel sizes in GetForeground");
+            return Range.OfInts(pixelSize.Height).SelectMany(y => Range.OfInts(pixelSize.Width).Select((x) =>
+            {
+                var b = background[x + y * pixelSize.Width];
+                var f = newData[x + y * pixelSize.Width];
+                if (f.Depth - b.Depth <= thresh)
+                    return null;
+
+                var dip = new DepthImagePoint()
+                {
+                    X = x,
+                    Y = y,
+                    Depth = f.Depth
+                };
+                return (DepthImagePoint?)dip;
+            })).Where(p => p.HasValue).Select(p => p.Value).ToArray();
         }
 
         public DepthCameraImage TakeImage(int wait = 10000)
@@ -36,9 +110,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                 else
                     throw new NotImplementedException();
                 ColorImagePoint[] colorpoints = new ColorImagePoint[width * height];
-                sensor.CoordinateMapper.MapDepthFrameToColorFrame(DepthImageFormat.Resolution640x480Fps30
+                sensor.CoordinateMapper.MapDepthFrameToColorFrame(sensor.DepthStream.Format
                     , depthPixels, ColorImageFormat.RgbResolution1280x960Fps12, colorpoints);
-                var points = Range.OfInts(width).SelectMany( x => Range.OfInts(height).Select((y) =>
+                var points = Range.OfInts(height).SelectMany( y => Range.OfInts(width).Select((x) =>
                 {
                     var pix = depthPixels[x + y * width];
                     
@@ -53,7 +127,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                 return new DepthCameraImage(width, height, frame.MaxDepth, frame.MinDepth, points)
                     {
                         ColorPoints = colorpoints,
-                        DepthFormat = sensor.DepthStream.Format 
+                        DepthFormat = sensor.DepthStream.Format,
+                        SkeletonPoints = points.Select(p => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(sensor.DepthStream.Format, p)).ToArray()
                     };
             }
         }
@@ -76,6 +151,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         }
         private DepthImagePoint[] points;
         public ColorImagePoint[] ColorPoints;
+        public SkeletonPoint[] SkeletonPoints;
 
         public DepthImagePoint this[int x, int y]
         {

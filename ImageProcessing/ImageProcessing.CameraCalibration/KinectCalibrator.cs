@@ -16,6 +16,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         KinectSensor sensor;
         Matrix<float> IR2RGB;
         public Matrix<float> K2G;
+        Matrix<float> EXTRA;
         public KinectCalibrator(KinectSensor sensor, CalibrationResult calib)
         {
             this.calib = calib;
@@ -41,17 +42,29 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 { (float)rt.Data[2,0], (float)rt.Data[2,1], (float)rt.Data[2,2], (float)rt.Data[2,3] },
                 {0,0,0,1}
             }).Inverse();
+
+            //EXTRA = DenseMatrix.OfArray(new Single[,] 
+            //{
+            //    { 1,0,0,-0.02f },
+            //    { 0,1,0,0.05f },
+            //    { 0,0,1,0 },
+            //    { 0,0,0,1 }
+            //});
+            EXTRA = K2G * IR2RGB * IR2RGB;
         }
 
         public float[] ToGlobal(SkeletonPoint point)
         {
+            var depth = new DenseVector(new float[] { -point.X, -point.Y, point.Z, 1 });
+            //var tdepth = K2G.Multiply(IR2RGB.Multiply(IR2RGB.Multiply(depth)));
+            var tdepth = EXTRA.Multiply(depth);
+            return tdepth.ToArray();
             var colorPoint = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
             var cpp = new System.Drawing.PointF(1280 - colorPoint.X, colorPoint.Y);
-            var depth = new DenseVector(new float[] { point.X, point.Y, point.Z, 1 });
-            var tdepth = K2G.Multiply(IR2RGB.Multiply(depth));
             var irt = calib.InverseExtrinsic(tdepth[2] / tdepth[3]);
             var it = calib.InverseTransform(cpp, irt);
-            return it;
+
+            return EXTRA.Multiply(new DenseVector(it.Concat(new float[] {1}).ToArray())).ToArray();
         }
 
         public float[] ToGlobal(Joint joint)

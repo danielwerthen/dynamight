@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Dynamight.App
 {
-    public class HandLightning
+    public class SkeletonApp
     {
         public static void Run(string[] args)
         {
@@ -27,18 +27,30 @@ namespace Dynamight.App
             var pc = Utils.DeSerializeObject<CalibrationResult>(projfile);
             Projector projector = new Projector();
             KinectSensor sensor = KinectSensor.KinectSensors.First();
-            DepthCamera cam = new DepthCamera(sensor, DepthImageFormat.Resolution80x60Fps30);
+            
+            sensor.SkeletonStream.Enable();
             KinectCalibrator kc = new KinectCalibrator(sensor, cc);
             sensor.Start();
 
             while (true)
             {
-                var test = cam.GetDepth(10000);
-                var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, f));
-                var globals = kc.ToGlobal(sp).ToArray();
+                using (var frame = sensor.SkeletonStream.OpenNextFrame(10000))
                 {
-                    var projected = pc.Transform(globals.Where(g => g[2] > -0.0f).ToArray());
-                    projector.DrawPoints(projected,2, Color.Gray);
+                    var skeletons = new Microsoft.Kinect.Skeleton[frame.SkeletonArrayLength];
+                    frame.CopySkeletonDataTo(skeletons);
+                    var points = skeletons.Where(sk => sk.TrackingState == SkeletonTrackingState.Tracked)
+                        .SelectMany(sk => sk.Joints).Where(j => j.TrackingState != JointTrackingState.NotTracked)
+                        .Select(j => j.Position).ToArray();
+                    if (points.Length > 0)
+                    {
+                        var globals = kc.ToGlobal(points).ToArray();
+                        var projected = pc.Transform(globals);
+                        projector.DrawPoints(projected, 25, Color.White);
+                    }
+                    else
+                    {
+                        projector.DrawBackground(Color.Black);
+                    }
                 }
             }
         }

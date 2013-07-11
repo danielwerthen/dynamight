@@ -28,6 +28,11 @@ namespace Dynamight.App
                 Run = HandLightning.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "Skeleton", "s" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = SkeletonApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "quit", "q" }, 
                 Parameters = new string[] {  },
                 Run = (args) => exit = true
