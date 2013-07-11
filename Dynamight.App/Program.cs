@@ -33,6 +33,11 @@ namespace Dynamight.App
                 Run = SkeletonApp.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "Transform", "t" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = TransformApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "quit", "q" }, 
                 Parameters = new string[] {  },
                 Run = (args) => exit = true

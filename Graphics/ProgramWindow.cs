@@ -34,16 +34,17 @@ namespace Graphics
 
 		Program active;
 
-		public void SetProgram(Program program)
+		public Program SetProgram(Program program)
 		{
             if (program == active)
-                return;
+                return program;
 			MakeCurrent();
 			if (active != null)
 				active.Unload();
 			active = program;
 			if (active != null)
 				active.Load(this);
+            return program;
 		}
 
 		public override void RenderFrame()
@@ -54,7 +55,15 @@ namespace Graphics
 			SwapBuffers();
 		}
 
-
+        public static ProgramWindow OpenOnSecondary()
+        {
+            var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
+            var window = new ProgramWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
+            window.Fullscreen = true;
+            window.Load();
+            window.ResizeGraphics();
+            return window;
+        }
 	}
 
 	public abstract class Program

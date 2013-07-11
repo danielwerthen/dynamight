@@ -22,11 +22,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
         public CheckerboardProgram cp;
 		public Projector()
 		{
-			var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
-			window = new ProgramWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
-			window.Fullscreen = true;
-			window.Load();
-			window.ResizeGraphics();
+            window = ProgramWindow.OpenOnSecondary();
 
 			window.SetProgram(slp = new StructuredLightProgram());
 			bp = new BitmapProgram(bitmap = new Bitmap(window.Width, window.Height));

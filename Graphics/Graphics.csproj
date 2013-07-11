@@ -49,6 +49,10 @@
     <Compile Include="BitmapProgram.cs" />
     <Compile Include="BitmapWindow.cs" />
     <Compile Include="CheckerboardProgram.cs" />
+    <Compile Include="Geometry\Checkerboard.cs" />
+    <Compile Include="Geometry\Quad.cs" />
+    <Compile Include="Geometry\Cube.cs" />
+    <Compile Include="Geometry\Shape.cs" />
     <Compile Include="StructuredLightProgram.cs" />
     <Compile Include="ProgramWindow.cs" />
     <Compile Include="QuickDraw.cs" />
