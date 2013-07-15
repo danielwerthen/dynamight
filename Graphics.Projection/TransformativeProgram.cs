@@ -14,6 +14,31 @@ namespace Graphics.Projection
     public class TransformativeProgram : Program
     {
 
+        private float rad(float x, float y)
+        {
+            return (float)(Math.Pow(x, 2.0) + Math.Pow(y, 2.0));
+        }
+
+        private float dist(float r2, Matrix4 K)
+        {
+            return (float)((1.0 + K.M11 * r2 + K.M12 * Math.Pow(r2, 2.0) + K.M21 * Math.Pow(r2, 3))
+                / (1.0 + K.M22 * r2 + K.M23 * Math.Pow(r2, 2.0) + K.M24 * Math.Pow(r2, 3)));
+        }
+
+        Vector4 tran(Vector4 V, Matrix4 K, Vector2 F, Vector2 C)
+        {
+            float xp = V.X / V.Z;
+            float yp = V.Y / V.Z;
+            float r2 = rad(xp, yp);
+            float xpp = (float)(xp * dist(r2, K) + 2 * K.M13 * xp * yp + K.M14 * (r2 + 2 * Math.Pow(xp, 2)));
+            float ypp = (float)(yp * dist(r2, K) + K.M13 * (r2 + 2 * Math.Pow(yp, 2)) + 2 * K.M14 * xp * yp);
+            float u = F.X * xpp + C.X;
+            float v = F.Y * ypp + C.Y;
+            return new Vector4(u, v, V.Z, V.W);
+        }
+
+
+
 		const string VERTEXSHADER =
 @"
 uniform int WIDTH;
@@ -55,11 +80,12 @@ void main(void)
   float r2 = rad(xp, yp);
   float xpp = xp * dist(r2) + 2.0 * K[2][0] * xp * yp + K[3][0] * (r2 + 2.0 * pow(xp, 2.0));
   float ypp = yp * dist(r2) + K[2][0] * (r2 + 2.0 * pow(yp, 2.0)) + 2.0 * K[3][0] * xp * yp;
-  float u = F.x * xp + C.x;
-  float v = F.y * yp + C.y;
-  gl_Position = vec4((u) / ( 2.0 * float(WIDTH)), V.y, V.z, V.w);
-  gl_Position = vec4(u / (float(WIDTH)), v / (float(HEIGHT)), z, 1.0);
+  float u = F.x * xpp + C.x;
+  float v = F.y * ypp + C.y;
+
+  gl_Position = vec4(2.0 * (u / float(WIDTH)) - 1.0, 2.0 * ((float(HEIGHT) - v) / float(HEIGHT)) - 1.0, 0.5, 1.0);
 }";
+
 		const string FRAGMENTSHADER =
 @"
 uniform sampler2D COLORTABLE;
@@ -72,20 +98,10 @@ void main(void)
 
         int vertex_buffer_object, color_buffer_object, element_buffer_object;
 
-        Shape shape = new Checkerboard();
-
-        public float[] Multi(OpenTK.Matrix4d mat, float[] v)
-        {
-            return new float[] {
-                (float)(v[0] * mat.M11 + v[1] * mat.M21 + v[2] * mat.M31 + v[3] * mat.M41),
-                (float)(v[0] * mat.M12 + v[1] * mat.M22 + v[2] * mat.M32 + v[3] * mat.M42),
-                (float)(v[0] * mat.M13 + v[1] * mat.M23 + v[2] * mat.M33 + v[3] * mat.M43),
-                (float)(v[0] * mat.M14 + v[1] * mat.M24 + v[2] * mat.M34 + v[3] * mat.M44),
-            };
-        }
-
+        Shape shape = new Checkerboard(new Size(7,4), 0.05f);
         Vector2 F, C;
         Matrix4 K;
+
         public void SetProjection(CalibrationResult calib)
         {
             parent.MakeCurrent();
@@ -93,13 +109,6 @@ void main(void)
             var Width = parent.Width;
             var Height = parent.Height;
             GL.Viewport(0,0, Width, Height);
-
-            var points = new float[][] {
-                new float[] { 0,0,0,1 },
-                new float[] { 1,0,0,1 },
-                new float[] { 0,1,0,1 },
-                new float[] { 0,0,1,1 },
-            };
             var rt = calib.Extrinsic.ExtrinsicMatrix.Data;
             var extrin = new OpenTK.Matrix4d(
                 rt[0, 0], rt[1, 0], rt[2, 0], 0,
@@ -109,8 +118,6 @@ void main(void)
             GL.MatrixMode(MatrixMode.Projection);
             GL.LoadMatrix(ref extrin);
 
-            var tp = points.Select(r => Multi(extrin, r)).ToArray();
-            
             GL.MatrixMode(MatrixMode.Modelview);
             GL.LoadIdentity();
 
@@ -123,30 +130,6 @@ void main(void)
                 (float)dist[4, 0], (float)dist[5, 0], (float)dist[6, 0], (float)dist[7, 0],
                 0,0,0,0,
                 0,0,0,0);
-            return;
-
-
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadIdentity();
-            Matrix4 test = new Matrix4(
-                2, 0, 0, 0, 
-                0, -2, 0, 0, 
-                0, 0, -1, 0,
-                -1f, 1f, -1.1f, 1);
-            Matrix4 lookat = Matrix4.LookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
-            GL.MatrixMode(MatrixMode.Modelview);
-            //GL.LoadMatrix(ref test);
-
-            float aspect_ratio = Width / (float)Height;
-            Matrix4 perpective = Matrix4.CreatePerspectiveFieldOfView(MathHelper.PiOver4, aspect_ratio, 1, 64);
-            GL.MatrixMode(MatrixMode.Projection);
-            var perp = new Matrix4(
-                1f, 0, 0, 0,
-                0, 1.3333f, 0, 0,
-                0, 0, -1f, -1f,
-                0, 0, -2, 0);
-
-            GL.LoadMatrix(ref perp);
         }
 
 		int texture, program;
@@ -189,6 +172,8 @@ void main(void)
             parent.MakeCurrent();
             GL.MatrixMode(MatrixMode.Modelview);
             GL.LoadIdentity();
+            GL.MatrixMode(MatrixMode.Projection);
+            GL.Ortho(0.0, 1.0, 0.0, 1.0, -100.0, 100.0);
 
 			if (program != 0)
 				GL.DeleteProgram(program);
@@ -275,34 +260,6 @@ void main(void)
         }
 
         #endregion
-
-        //public override void Render()
-        //{
-        //    GL.Clear(ClearBufferMask.ColorBufferBit |
-        //             ClearBufferMask.DepthBufferBit);
-
-        //    GL.BindTexture(TextureTarget.Texture2D, texture);
-        //    GL.UseProgram(program);
-
-        //    GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
-        //    GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
-        //    GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
-
-
-
-        //    GL.Begin(BeginMode.Quads);
-
-        //    GL.TexCoord2(0.0f, 1.0f);
-        //    GL.Vertex3(0.0f, 0.0f, 5.0f);
-        //    GL.TexCoord2(1.0f, 1.0f);
-        //    GL.Vertex3(1.5f, 0.0f, 5.0f);
-        //    GL.TexCoord2(1.0f, 0.0f);
-        //    GL.Vertex3(1.5f, 1.5f, 5.0f);
-        //    GL.TexCoord2(0.0f, 0.0f);
-        //    GL.Vertex3(0.0f, 1.5f, 5.0f);
-
-        //    GL.End();
-        //}
     }
 
 }
