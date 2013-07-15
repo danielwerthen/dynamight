@@ -26,6 +26,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                 if (frame == null)
                     return null;
                 var depthPixels = new DepthImagePixel[sensor.DepthStream.FramePixelDataLength];
+                
                 frame.CopyDepthImagePixelDataTo(depthPixels);
                 if (sensor.DepthStream.Format == DepthImageFormat.Resolution640x480Fps30)
                 {

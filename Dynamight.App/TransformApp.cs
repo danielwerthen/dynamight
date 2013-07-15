@@ -26,25 +26,16 @@ namespace Dynamight.App
             var cc = Utils.DeSerializeObject<CalibrationResult>(camfile);
             var pc = Utils.DeSerializeObject<CalibrationResult>(projfile);
 
-            //var points = new float[][] {
-            //    new float[] { 0,0,0,1 },
-            //    new float[] { 0.2f,0,0,1 },
-            //    new float[] { 0.2f,0.2f,0,1 },
-            //    new float[] { 0,0.2f,0,1 },
-            //};
-
-            //var proj = new Projector();
-            //proj.DrawPoints(pc.Transform(points), 5.0f);
-            //proj.Close();
-
             var window = ProgramWindow.OpenOnSecondary();
             
             var program = new TransformativeProgram();
             window.SetProgram(program);
             program.Draw().Fill(Color.Goldenrod).Finish();
             program.SetProjection(pc);
-            while (true)
-                window.RenderFrame();
+            window.RenderFrame();
+            Console.WriteLine("Press enter to exit");
+            Console.ReadLine();
+            window.Close();
         }
     }
 }
