@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 
 namespace Graphics.Projection
 {
-    public abstract class World2ScreenProgram: Program
-    {
+	public abstract class World2ScreenProgram : Program
+	{
 
-		const string VERTEXSHADER =
+		protected const string VSDistort =
 @"
 uniform int WIDTH;
 uniform int HEIGHT;
@@ -33,11 +33,8 @@ float dist(float r2)
         /  (1.0 + K[1][1] * r2 + K[2][1] * pow(r2, 2.0) + K[3][1] * pow(r2, 4.0));
 }
 
-void main(void)
+vec4 distort(vec4 V)
 {
-  gl_FrontColor = gl_Color;
-  gl_TexCoord[0] = gl_MultiTexCoord0; 
-  vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
   float xp = V.x;
   float yp = V.y;
   float z = V.z;
@@ -59,10 +56,22 @@ void main(void)
   float u = F.x * xpp + C.x;
   float v = F.y * ypp + C.y;
 
-  gl_Position = vec4(2.0 * (u / float(WIDTH)) - 1.0, 2.0 * ((float(HEIGHT) - v) / float(HEIGHT)) - 1.0, 0.5, 1.0);
-}";
+  return vec4(2.0 * (u / float(WIDTH)) - 1.0, 2.0 * ((float(HEIGHT) - v) / float(HEIGHT)) - 1.0, 0.5, 1.0);
+}
+";
 
-		const string FRAGMENTSHADER =
+		protected const string VSMain =
+@"
+void main(void)
+{
+  gl_FrontColor = gl_Color;
+  gl_TexCoord[0] = gl_MultiTexCoord0; 
+  vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
+  gl_Position = distort(V);
+}
+";
+
+		protected const string FSMain =
 @"
 uniform sampler2D COLORTABLE;
 
@@ -74,73 +83,84 @@ void main(void)
 }
 ";
 
+		protected virtual IEnumerable<string> VertexShaderParts()
+		{
+			yield return VSDistort;
+			yield return VSMain;
+		}
 
-        Shape shape = new Checkerboard(new Size(7,4), 0.05f);
-        Vector2 F, C;
-        Matrix4 K;
+		protected virtual IEnumerable<string> FragmentShaderParts()
+		{
+			yield return FSMain;
+		}
 
-        public void SetProjection(CalibrationResult calib)
-        {
-            parent.MakeCurrent();
 
-            var Width = parent.Width;
-            var Height = parent.Height;
-            GL.Viewport(0,0, Width, Height);
-            var rt = calib.Extrinsic.ExtrinsicMatrix.Data;
-            var extrin = new OpenTK.Matrix4d(
-                rt[0, 0], rt[1, 0], rt[2, 0], 0,
-                rt[0, 1], rt[1, 1], rt[2, 1], 0,
-                rt[0, 2], rt[1, 2], rt[2, 2], 0,
-                rt[0, 3], rt[1, 3], rt[2, 3], 1);
-            GL.MatrixMode(MatrixMode.Projection);
-            GL.LoadMatrix(ref extrin);
+		Shape shape = new Checkerboard(new Size(7, 4), 0.05f);
+		Vector2 F, C;
+		Matrix4 K;
 
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadIdentity();
+		public void SetProjection(CalibrationResult calib)
+		{
+			parent.MakeCurrent();
 
-            var intrin = calib.Intrinsic.IntrinsicMatrix.Data;
-            var dist = calib.Intrinsic.DistortionCoeffs.Data;
-            F = new Vector2((float)intrin[0, 0], (float)intrin[1, 1]);
-            C = new Vector2((float)intrin[0, 2], (float)intrin[1, 2]);
-            K = new Matrix4(
-                (float)dist[0, 0], (float)dist[1, 0], (float)dist[2, 0], (float)dist[3, 0],
-                (float)dist[4, 0], (float)dist[5, 0], (float)dist[6, 0], (float)dist[7, 0],
-                0,0,0,0,
-                0,0,0,0);
-        }
+			var Width = parent.Width;
+			var Height = parent.Height;
+			GL.Viewport(0, 0, Width, Height);
+			var rt = calib.Extrinsic.ExtrinsicMatrix.Data;
+			var extrin = new OpenTK.Matrix4d(
+					rt[0, 0], rt[1, 0], rt[2, 0], 0,
+					rt[0, 1], rt[1, 1], rt[2, 1], 0,
+					rt[0, 2], rt[1, 2], rt[2, 2], 0,
+					rt[0, 3], rt[1, 3], rt[2, 3], 1);
+			GL.MatrixMode(MatrixMode.Projection);
+			GL.LoadMatrix(ref extrin);
 
-        protected virtual string GetVertexShader()
-        {
-            return VERTEXSHADER;
-        }
+			GL.MatrixMode(MatrixMode.Modelview);
+			GL.LoadIdentity();
 
-        protected virtual string GetFragmentShader()
-        {
-            return FRAGMENTSHADER;
-        }
+			var intrin = calib.Intrinsic.IntrinsicMatrix.Data;
+			var dist = calib.Intrinsic.DistortionCoeffs.Data;
+			F = new Vector2((float)intrin[0, 0], (float)intrin[1, 1]);
+			C = new Vector2((float)intrin[0, 2], (float)intrin[1, 2]);
+			K = new Matrix4(
+					(float)dist[0, 0], (float)dist[1, 0], (float)dist[2, 0], (float)dist[3, 0],
+					(float)dist[4, 0], (float)dist[5, 0], (float)dist[6, 0], (float)dist[7, 0],
+					0, 0, 0, 0,
+					0, 0, 0, 0);
+		}
 
-        protected virtual string GetGeometryShader()
-        {
-            return null;
-        }
+		protected virtual string GetVertexShader()
+		{
+			return string.Join("\n", VertexShaderParts());
+		}
+
+		protected virtual string GetFragmentShader()
+		{
+			return string.Join("\n", FragmentShaderParts());
+		}
+
+		protected virtual string GetGeometryShader()
+		{
+			return null;
+		}
 
 		int texture, program;
 		TextureUnit unit = TextureUnit.Texture0;
 		ProgramWindow parent;
-        Bitmap bitmap;
+		Bitmap bitmap;
 		public override void Load(ProgramWindow parent)
 		{
 			this.parent = parent;
 			GL.Disable(EnableCap.Dither);
-            GL.Enable(EnableCap.Texture2D);
-            GL.Enable(EnableCap.DepthTest);
+			GL.Enable(EnableCap.Texture2D);
+			GL.Enable(EnableCap.DepthTest);
 			GL.ClearColor(System.Drawing.Color.Black);
-            var vs = parent.CreateShader(ShaderType.VertexShader, GetVertexShader());
-            var fs = parent.CreateShader(ShaderType.FragmentShader, GetFragmentShader());
-            var gss = GetGeometryShader();
-            int? gs = null;
-            if (gss != null)
-                gs = parent.CreateShader(ShaderType.GeometryShader, gss);
+			var vs = parent.CreateShader(ShaderType.VertexShader, GetVertexShader());
+			var fs = parent.CreateShader(ShaderType.FragmentShader, GetFragmentShader());
+			var gss = GetGeometryShader();
+			int? gs = null;
+			if (gss != null)
+				gs = parent.CreateShader(ShaderType.GeometryShader, gss);
 			program = parent.CreateProgram(vs, fs, gs);
 			GL.DeleteShader(vs);
 			GL.DeleteShader(fs);
@@ -162,38 +182,38 @@ void main(void)
 		}
 
 		public override void Unload()
-        {
-            parent.MakeCurrent();
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadIdentity();
-            GL.MatrixMode(MatrixMode.Projection);
-            GL.Ortho(0.0, 1.0, 0.0, 1.0, -100.0, 100.0);
-            GL.Disable(EnableCap.DepthTest);
+		{
+			parent.MakeCurrent();
+			GL.MatrixMode(MatrixMode.Modelview);
+			GL.LoadIdentity();
+			GL.MatrixMode(MatrixMode.Projection);
+			GL.Ortho(0.0, 1.0, 0.0, 1.0, -100.0, 100.0);
+			GL.Disable(EnableCap.DepthTest);
 
 			if (program != 0)
 				GL.DeleteProgram(program);
 			if (texture != 0)
-                GL.DeleteTexture(texture);
+				GL.DeleteTexture(texture);
 
 		}
 
-        public override void Render()
-        {
+		public override void Render()
+		{
 
-            GL.Clear(ClearBufferMask.ColorBufferBit |
-                     ClearBufferMask.DepthBufferBit);
+			GL.Clear(ClearBufferMask.ColorBufferBit |
+							 ClearBufferMask.DepthBufferBit);
 
-            GL.UseProgram(program);
-            GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
-            GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
-            GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
-            GL.Uniform2(GL.GetUniformLocation(program, "F"), F);
-            GL.Uniform2(GL.GetUniformLocation(program, "C"), C);
-            GL.UniformMatrix4(GL.GetUniformLocation(program, "K"), true, ref K);
+			GL.UseProgram(program);
+			GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
+			GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
+			GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
+			GL.Uniform2(GL.GetUniformLocation(program, "F"), F);
+			GL.Uniform2(GL.GetUniformLocation(program, "C"), C);
+			GL.UniformMatrix4(GL.GetUniformLocation(program, "K"), true, ref K);
 
 
 
-        }
-    }
+		}
+	}
 
 }

@@ -1,5 +1,6 @@
 ﻿using Dynamight.ImageProcessing.CameraCalibration.Utils;
 using Graphics;
+using Graphics.Projection;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
@@ -39,50 +40,24 @@ namespace MultipleScreens
 
 		static void Main(string[] args)
 		{
-			int idx = 0;
-			int width = 500;
-			int pre = 352;
-			int maxStep = (int)Math.Floor(Math.Log(width, 2)) + 1;
-			var t = Range(width).Select(row => row / (double)width).Select(row => Intensity(row, 9)).ToArray();
-			for (var i = 1; i <= maxStep - 3; i++)
-			{
-				var range = Range(width).Select(row => row / (double)width).Select(row => Intensity(row, i)).ToArray();
-				var hit = range[pre] > 0;
-				idx = idx << 1;
-				idx = idx | (hit ? 1 : 0);
-			}
-			var t1 = idx << 3;
-			var t2 = (idx / Math.Pow(2, maxStep - 3)) * width;
-
-			Camera cam = new Camera();
-
 			var window = new ProgramWindow(1000, 50, 640, 480);
-			var window2 = new ProgramWindow(1000, 530, 640, 480);
 			window.ResizeGraphics();
-			window2.ResizeGraphics();
-			var cp = new CheckerboardProgram();
-			var bp = new BitmapProgram();
-			window.SetProgram(cp);
-			window2.SetProgram(bp);
-			cp.SetSize(8, 8);
-			double xrot = 0;
-			var corners = cp.GetCorners().ToArray();
-            cp.SetTransforms(0, 0, 0, 0.7,0,0);
-			window.RenderFrame();
-			//cp.Draw().Fill(Color.Black).DrawPoint((1.0 / (double)8.0) * 640.0, (1.0 / (double)5.0) * 480.0).Finish();
-			bp.Draw().Fill(Color.Black).DrawPoint(corners, 5).Finish();
-			window2.RenderFrame();
-			while (true)
+			window.Load();
+
+			var program = new PointCloudProgram(15f);
+			window.SetProgram(program);
+			program.Draw().All((xp, yp) =>
 			{
-				cp.SetTransforms(xrot, -2 * xrot, xrot, 0.7,0.0,0.0);
-				window.ProcessEvents();
-				window.RenderFrame();
-				window2.ProcessEvents();
-				window2.RenderFrame();
-				corners = cp.GetCorners().ToArray();
-				bp.Draw().Fill(Color.Black).DrawPoint(corners, 5).Finish();
-				xrot += 0.025;
-			}
+				var x = 0.5 - xp;
+				var y = 0.5 - yp;
+				var i = Math.Sqrt(x * x + y * y) * 2.5;
+				if (i > 1)
+					i = 1;
+				i = Math.Pow(1 - i, 3);
+				byte ii = (byte)(i * 255);
+				return Color.FromArgb(ii, 255, 255, 255);
+			}).Finish();
+			program.SetProjection(pc);
 		}
 	}
 
