@@ -31,7 +31,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new PointCloudProgram(15f);
+            var program = new PointCloudProgram(39f);
             window.SetProgram(program);
             program.Draw().All((xp, yp) => {
                 var x = 0.5 - xp;
@@ -49,15 +49,39 @@ namespace Dynamight.App
             DepthCamera cam = new DepthCamera(sensor, DepthImageFormat.Resolution80x60Fps30);
             KinectCalibrator kc = new KinectCalibrator(sensor, cc);
             sensor.Start();
+            sensor.SkeletonStream.Enable();
 
             //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
             //window.RenderFrame();
 
+            Func<float[]> getHand = () =>
+            {
+                using (var frame = sensor.SkeletonStream.OpenNextFrame(10000))
+                {
+                    Skeleton[] skeletons = new Skeleton[frame.SkeletonArrayLength];
+                    frame.CopySkeletonDataTo(skeletons);
+                    var rhand = skeletons.Where(sk => sk.TrackingState == SkeletonTrackingState.Tracked)
+                        .SelectMany(sk => sk.Joints).Where(j => j.TrackingState != JointTrackingState.NotTracked)
+                        .Where(j => j.JointType == JointType.HandRight)
+                        .Select(j => j.Position).ToArray();
+                    if (rhand.Length > 0)
+                        return kc.ToGlobal(rhand.First());
+                    else
+                        return null;
+                }
+            };
+
+            float dt = 0;
+
             while (true)
             {
+                var hand = getHand();
                 var test = cam.GetDepth(10000);
                 var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, f));
-                var globals = kc.ToGlobal(sp).Where(g => g[2] > -0.5f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
+                var globals = kc.ToGlobal(sp).Where(g => g[2] < -0.0f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
+                //program.SetLight0Pos(new float[] { 1, 0, 1.33f, 1 });
+                if (hand != null)
+                    program.SetLight0Pos(hand);
                 program.SetPositions(globals);
                 window.RenderFrame();
                 //{

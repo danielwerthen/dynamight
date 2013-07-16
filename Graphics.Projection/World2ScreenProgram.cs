@@ -14,6 +14,45 @@ namespace Graphics.Projection
 	public abstract class World2ScreenProgram : Program
 	{
 
+        public static float Rad(float x, float y)
+        {
+            return (float)(Math.Pow(x, 2.0) + Math.Pow(y, 2.0));
+        }
+
+        public static float Dist(float r2, Matrix4 K)
+        {
+            
+            return (float)((1.0 + K.M11 * r2 + K.M12 * Math.Pow(r2, 2.0) + K.M21 * Math.Pow(r2, 3.0))
+                / (1.0 + K.M22 * r2 + K.M23 * Math.Pow(r2, 2.0) + K.M24 * Math.Pow(r2, 3.0)));
+        }
+
+        public static Vector4 Distort(Vector4 V, Matrix4 K, Vector2 F, Vector2 C, int WIDTH, int HEIGHT)
+        {
+          float xp = V.X;
+          float yp = V.Y;
+          float z = V.Z;
+
+          if (V.Z == 0.0f)
+          {
+            xp = xp / 0.0001f;
+            yp = yp / 0.0001f;
+            z = 0.0f;
+          } else
+          {
+            xp = xp / V.Z;
+            yp = yp / V.Z;
+            z = V.Z;
+          }
+          float r2 = Rad(xp, yp);
+          float xpp = (float)(xp * Dist(r2, K) + 2.0 * K.M13 * xp * yp + K.M14 * (r2 + 2.0 * Math.Pow(xp, 2.0)));
+          float ypp = (float)(yp * Dist(r2, K) + K.M13 * (r2 + 2.0 * Math.Pow(yp, 2.0)) + 2.0 * K.M14 * xp * yp);
+          float u = F.X * xpp + C.X;
+          float v = F.Y * ypp + C.Y;
+
+          var r = new Vector4d(2.0 * (u / (float)(WIDTH)) - 1.0, 2.0 * (((float)(HEIGHT) - v) / (float)(HEIGHT)) - 1.0, 0.5, 1.0);
+          return new Vector4((float)r.X, (float)r.Y, (float)r.Z, (float)r.Y);
+        }
+
 		protected const string VSDistort =
 @"
 uniform int WIDTH;
@@ -29,8 +68,8 @@ float rad(float x, float y)
 
 float dist(float r2)
 {
-    return (1.0 + K[0][0] * r2 + K[1][0] * pow(r2, 2.0) + K[0][1] * pow(r2, 4.0))
-        /  (1.0 + K[1][1] * r2 + K[2][1] * pow(r2, 2.0) + K[3][1] * pow(r2, 4.0));
+    return (1.0 + K[0][0] * r2 + K[1][0] * pow(r2, 2.0) + K[0][1] * pow(r2, 3.0))
+        /  (1.0 + K[1][1] * r2 + K[2][1] * pow(r2, 2.0) + K[3][1] * pow(r2, 3.0));
 }
 
 vec4 distort(vec4 V)
@@ -98,9 +137,27 @@ void main(void)
 		Shape shape = new Checkerboard(new Size(7, 4), 0.05f);
 		Vector2 F, C;
 		Matrix4 K;
+        protected CalibrationResult calib;
+
+        protected Vector4 Transform(float[] v)
+        {
+            var rt = calib.Extrinsic.ExtrinsicMatrix.Data;
+            return new Vector4(
+                (float)(v[0] * rt[0, 0] + v[1] * rt[0, 1] + v[2] * rt[0, 2] + v[3] * rt[0, 3]),
+                (float)(v[0] * rt[1, 0] + v[1] * rt[1, 1] + v[2] * rt[1, 2] + v[3] * rt[1, 3]),
+                (float)(v[0] * rt[2, 0] + v[1] * rt[2, 1] + v[2] * rt[2, 2] + v[3] * rt[2, 3]),
+                (float)(v[3])
+            );
+        }
+
+        protected Vector4 Distort(Vector4 v)
+        {
+            return Distort(v, K, F, C, parent.Width, parent.Height);
+        }
 
 		public void SetProjection(CalibrationResult calib)
 		{
+            this.calib = calib;
 			parent.MakeCurrent();
 
 			var Width = parent.Width;

@@ -21,6 +21,48 @@ namespace Graphics.Projection
 
         }
 
+        const string VSLighting = @"
+varying vec3 N;
+varying vec3 v;
+void main(void)
+{
+    gl_FrontColor = gl_Color;
+    gl_TexCoord[0] = gl_MultiTexCoord0; 
+    vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
+    v = vec3(gl_ModelViewMatrix * gl_Vertex);       
+    N = normalize(gl_NormalMatrix * gl_Normal);
+    gl_Position = distort(V);
+
+}
+";
+
+        const string FSLighting = @"
+
+varying vec3 N;
+varying vec3 v;
+
+void main(void)
+{
+   vec3 D = gl_LightSource[0].position.xyz - v;
+   float d = 1.0 - min(sqrt(D.x*D.x + D.y*D.y + D.z*D.z) / 8.0, 1.0);
+   vec3 L = normalize(D);   
+   vec4 Idiff = d * gl_FrontLightProduct[0].diffuse * max(dot(N,L), 0.0);  
+   Idiff = clamp(Idiff, 0.0, 1.0); 
+
+   gl_FragColor = Idiff;
+}
+";
+
+        protected override IEnumerable<string> VertexShaderParts()
+        {
+            yield return VSDistort;
+            yield return VSLighting;
+        }
+
+        protected override IEnumerable<string> FragmentShaderParts()
+        {
+            yield return FSLighting;
+        }
 
         float pointSize = 0;
         VertexC4ubV3f[] VBO;
@@ -44,7 +86,8 @@ namespace Graphics.Projection
 
             // Setup VBO state
             GL.EnableClientState(ArrayCap.ColorArray);
-            GL.EnableClientState(ArrayCap.VertexArray); 
+            GL.EnableClientState(ArrayCap.VertexArray);
+            GL.EnableClientState(ArrayCap.NormalArray);
             
             GL.GenBuffers(1, out VBOHandle);
 
@@ -53,6 +96,16 @@ namespace Graphics.Projection
             GL.ColorPointer(4, ColorPointerType.UnsignedByte, VertexC4ubV3f.SizeInBytes, (IntPtr)0);
             GL.VertexPointer(3, VertexPointerType.Float, VertexC4ubV3f.SizeInBytes, (IntPtr)(4 * sizeof(byte)));
             GL.NormalPointer(NormalPointerType.Float, VertexC4ubV3f.SizeInBytes, (IntPtr)(4 * sizeof(byte) + Vector3.SizeInBytes));
+
+
+
+            GL.Light(LightName.Light0, LightParameter.Diffuse, OpenTK.Graphics.Color4.White);
+            GL.Enable(EnableCap.Lighting);
+            GL.Enable(EnableCap.Light0);
+            GL.Material(MaterialFace.Front, MaterialParameter.Ambient, new float[] { 0.3f, 0.3f, 0.3f, 1.0f });
+            GL.Material(MaterialFace.Front, MaterialParameter.Diffuse, new float[] { 1.0f, 1.0f, 1.0f, 1.0f });
+            GL.Material(MaterialFace.Front, MaterialParameter.Specular, new float[] { 1.0f, 1.0f, 1.0f, 1.0f });
+            GL.Material(MaterialFace.Front, MaterialParameter.Emission, new float[] { 0.0f, 0.0f, 0.0f, 1.0f });
 
             VBO = new VertexC4ubV3f[0];
         }
@@ -63,6 +116,7 @@ namespace Graphics.Projection
             GL.DeleteBuffers(1, ref VBOHandle);
             GL.DisableClientState(ArrayCap.ColorArray);
             GL.DisableClientState(ArrayCap.VertexArray);
+            GL.DisableClientState(ArrayCap.NormalArray);
             base.Unload();
         }
 
@@ -76,8 +130,14 @@ namespace Graphics.Projection
                 VBO[i].B = 100;
                 VBO[i].A = 255;
                 VBO[i].Position = vertices[i];
-                VBO[i].Normal = new Vector3(0, 0, 1);
+                VBO[i].Normal = new Vector3(1, 0, 1);
             }
+        }
+
+        public void SetLight0Pos(float[] v)
+        {
+            var vg = this.Transform(v);
+            GL.Light(LightName.Light0, LightParameter.Position, vg);
         }
 
         public override void Render()
