@@ -121,12 +121,14 @@ namespace Graphics
 			return ptr;
 		}
 
-		public int CreateProgram(int vs, int fs)
+		public int CreateProgram(int vs, int fs, int? gs = null)
 		{
 			MakeCurrent();
 			int ptr = GL.CreateProgram();
 			GL.AttachShader(ptr, vs);
 			GL.AttachShader(ptr, fs);
+            if (gs.HasValue)
+                GL.AttachShader(ptr, gs.Value);
 			GL.LinkProgram(ptr);
 			
 			return ptr;

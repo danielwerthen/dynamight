@@ -15,10 +15,12 @@ namespace Graphics.Projection
         {
             public byte R, B, G, A;
             public Vector3 Position;
+            public Vector3 Normal;
 
-            public static int SizeInBytes = 16;
+            public static int SizeInBytes = 28;
 
         }
+
 
         float pointSize = 0;
         VertexC4ubV3f[] VBO;
@@ -35,6 +37,8 @@ namespace Graphics.Projection
             GL.PointSize(pointSize);
             GL.Enable(EnableCap.PointSmooth);
             GL.Enable(EnableCap.Blend);
+            GL.Disable(EnableCap.DepthTest);
+            GL.Enable(EnableCap.CullFace);
             GL.BlendFunc(BlendingFactorSrc.One, BlendingFactorDest.One);
             GL.Hint(HintTarget.PointSmoothHint, HintMode.Nicest);
 
@@ -48,6 +52,7 @@ namespace Graphics.Projection
             GL.BindBuffer(BufferTarget.ArrayBuffer, VBOHandle);
             GL.ColorPointer(4, ColorPointerType.UnsignedByte, VertexC4ubV3f.SizeInBytes, (IntPtr)0);
             GL.VertexPointer(3, VertexPointerType.Float, VertexC4ubV3f.SizeInBytes, (IntPtr)(4 * sizeof(byte)));
+            GL.NormalPointer(NormalPointerType.Float, VertexC4ubV3f.SizeInBytes, (IntPtr)(4 * sizeof(byte) + Vector3.SizeInBytes));
 
             VBO = new VertexC4ubV3f[0];
         }
@@ -66,11 +71,12 @@ namespace Graphics.Projection
             VBO = new VertexC4ubV3f[vertices.Length];
             for (var i = 0; i < vertices.Length; i++)
             {
-                VBO[i].R = 255;
-                VBO[i].G = 255;
-                VBO[i].B = 255;
-                VBO[i].A = 150;
+                VBO[i].R = 100;
+                VBO[i].G = 100;
+                VBO[i].B = 100;
+                VBO[i].A = 255;
                 VBO[i].Position = vertices[i];
+                VBO[i].Normal = new Vector3(0, 0, 1);
             }
         }
 

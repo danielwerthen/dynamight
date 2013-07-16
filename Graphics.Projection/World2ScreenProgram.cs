@@ -68,9 +68,9 @@ uniform sampler2D COLORTABLE;
 
 void main(void)
 {
-  gl_FragColor = texture2D(COLORTABLE, gl_TexCoord[0].st);
-  gl_FragColor = gl_FragColor.a * gl_FragColor;
-  //gl_FragColor = gl_Color;
+  //gl_FragColor = texture2D(COLORTABLE, gl_TexCoord[0].st);
+  //gl_FragColor = gl_FragColor.a * gl_FragColor;
+  gl_FragColor = gl_Color;
 }
 ";
 
@@ -109,6 +109,21 @@ void main(void)
                 0,0,0,0);
         }
 
+        protected virtual string GetVertexShader()
+        {
+            return VERTEXSHADER;
+        }
+
+        protected virtual string GetFragmentShader()
+        {
+            return FRAGMENTSHADER;
+        }
+
+        protected virtual string GetGeometryShader()
+        {
+            return null;
+        }
+
 		int texture, program;
 		TextureUnit unit = TextureUnit.Texture0;
 		ProgramWindow parent;
@@ -120,9 +135,13 @@ void main(void)
             GL.Enable(EnableCap.Texture2D);
             GL.Enable(EnableCap.DepthTest);
 			GL.ClearColor(System.Drawing.Color.Black);
-            var vs = parent.CreateShader(ShaderType.VertexShader, VERTEXSHADER);
-            var fs = parent.CreateShader(ShaderType.FragmentShader, FRAGMENTSHADER);
-			program = parent.CreateProgram(vs, fs);
+            var vs = parent.CreateShader(ShaderType.VertexShader, GetVertexShader());
+            var fs = parent.CreateShader(ShaderType.FragmentShader, GetFragmentShader());
+            var gss = GetGeometryShader();
+            int? gs = null;
+            if (gss != null)
+                gs = parent.CreateShader(ShaderType.GeometryShader, gss);
+			program = parent.CreateProgram(vs, fs, gs);
 			GL.DeleteShader(vs);
 			GL.DeleteShader(fs);
 			this.bitmap = this.bitmap ?? new System.Drawing.Bitmap(parent.Width, parent.Height);

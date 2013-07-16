@@ -31,7 +31,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new QuadCloudProgram(0.09f);
+            var program = new PointCloudProgram(15f);
             window.SetProgram(program);
             program.Draw().All((xp, yp) => {
                 var x = 0.5 - xp;
@@ -57,7 +57,7 @@ namespace Dynamight.App
             {
                 var test = cam.GetDepth(10000);
                 var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, f));
-                var globals = kc.ToGlobal(sp).Where(g => g[2] > 0.0f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
+                var globals = kc.ToGlobal(sp).Where(g => g[2] > -0.5f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
                 program.SetPositions(globals);
                 window.RenderFrame();
                 //{
