@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Graphics.Utils;
 
 namespace Dynamight.App
 {
@@ -19,6 +20,12 @@ namespace Dynamight.App
     {
         public static void Run(string[] args)
         {
+            var fls = new float[10];
+            Random r = new Random();
+            for (var i = 0; i < fls.Length; i++)
+                fls[i] = (float)r.NextDouble() * 10;
+            var res = fls.RadixSort();
+
             var camfile = args.FirstOrDefault() ?? Calibration.KinectDefaultFileName;
             var projfile = args.Skip(1).FirstOrDefault() ?? Calibration.ProjectorDefaultFileName;
             if (!File.Exists(camfile) || !File.Exists(projfile))
@@ -31,7 +38,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new PointCloudProgram(39f);
+            var program = new PointCloudProgram(69f);
             window.SetProgram(program);
             program.Draw().All((xp, yp) =>
             {
@@ -44,20 +51,21 @@ namespace Dynamight.App
                 byte ii = (byte)(i * 255);
                 return Color.FromArgb(ii, 255, 255, 255);
             }).Finish();
-            program.SetProjection(pc);
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
-            DepthCamera cam = new DepthCamera(sensor, DepthImageFormat.Resolution80x60Fps30);
+            var format = DepthImageFormat.Resolution80x60Fps30;
+            DepthCamera cam = new DepthCamera(sensor, format);
             KinectCalibrator kc = new KinectCalibrator(sensor, cc);
             sensor.Start();
             sensor.SkeletonStream.Enable();
+            program.SetProjection(pc, kc.GetModelView());
 
             //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
             //window.RenderFrame();
 
             Func<float[]> getHand = () =>
             {
-                using (var frame = sensor.SkeletonStream.OpenNextFrame(10000))
+                using (var frame = sensor.SkeletonStream.OpenNextFrame(100))
                 {
                     if (frame == null)
                         return null;
@@ -76,7 +84,7 @@ namespace Dynamight.App
 
             float dt = 0;
             {
-                float[] hand = new float[] { 0.124f, 0.50f, -0.1f, 1f };
+                float[] hand = new float[] { 0.124f, 0.50f, 2.7f, 1f };
                 {
                     var t = program.SetLight0Pos(hand);
                     Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
@@ -104,21 +112,42 @@ namespace Dynamight.App
 
             while (true)
             {
-                var hand = getHand();
                 var test = cam.GetDepth(10000);
-                var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, f));
-                var globals = kc.ToGlobal(sp).Where(g => g[2] > -0.1f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
-                //program.SetLight0Pos(new float[] { 0.16f, -0.14f, 0.24f, 1 });
-                if (hand != null)
-                {
-                    var t = program.SetLight0Pos(hand);
-                    Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
-                    Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
-                    //Console.Write("Done ");
-                }
-                program.SetPositions(globals);
+                if (test == null)
+                    continue;
+                System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                sw.Start();
+                var points = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, f))
+                    .Select(p => new Vector3(p.X, p.Y, p.Z)).ToArray();
+                program.SetPositions(points);
                 window.RenderFrame();
+                sw.Stop();
+                Console.WriteLine("Time: " + sw.ElapsedMilliseconds);
                 window.ProcessEvents();
+
+                //System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                //sw.Start();
+                //var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, f));
+                //var globals = sp.Select(p => new float[] { p.X, p.Y, p.Z, 1 }).ToArray();
+                ////var globals = kc.ToGlobal(sp).Where(g => g[2] > 0.1f).ToArray();
+                //sw.Stop();
+                //Console.WriteLine("Time: " + sw.ElapsedMilliseconds);
+                //program.SetLight0Pos(new float[] { 0.16f, -0.14f, 0.24f, 1 });
+
+
+                //var hand = getHand();
+                //if (hand != null)
+                //{
+                //    var t = program.SetLight0Pos(hand);
+                //    Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
+                //    Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
+                //    //Console.Write("Done ");
+                //}
+
+
+                //program.SetPositions(globals);
+                //window.RenderFrame();
+                //window.ProcessEvents();
                 //{
                 //    var projected = pc.Transform(globals.Where(g => g[2] > -0.0f).ToArray());
                 //    projector.DrawPoints(projected,2, Color.Gray);

@@ -53,6 +53,8 @@
     <Compile Include="Geometry\Quad.cs" />
     <Compile Include="Geometry\Cube.cs" />
     <Compile Include="Geometry\Shape.cs" />
+    <Compile Include="Utils\OctreeLookup.cs" />
+    <Compile Include="Utils\Sorting.cs" />
     <Compile Include="StructuredLightProgram.cs" />
     <Compile Include="ProgramWindow.cs" />
     <Compile Include="QuickDraw.cs" />
@@ -78,6 +80,12 @@
     <None Include="Data\Shaders\Scanline_VS.glsl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ThirdParty\Octree\Octree\OctreeSearch.csproj">
+      <Project>{73b51b31-1208-4ee6-b1c3-9d281c0ee8f4}</Project>
+      <Name>OctreeSearch</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

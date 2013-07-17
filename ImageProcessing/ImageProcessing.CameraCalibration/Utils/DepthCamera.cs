@@ -64,8 +64,11 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                     Y = y,
                     Depth = b.Depth
                 };
-                return dip;
-            })).ToArray();
+                if (b.IsKnownDepth)
+                    return (DepthImagePoint?)dip;
+                else
+                    return null;
+            })).Where(p => p.HasValue).Select(p => p.Value).ToArray();
         }
 
         public DepthImagePoint[] GetForeground(DepthImagePixel[] background, Size pixelSize, short thresh = 30, int wait = 10000)

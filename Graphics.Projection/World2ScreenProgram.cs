@@ -155,7 +155,7 @@ void main(void)
             return Distort(v, K, F, C, parent.Width, parent.Height);
         }
 
-		public void SetProjection(CalibrationResult calib)
+		public void SetProjection(CalibrationResult calib, Matrix4? modelView = null)
 		{
             this.calib = calib;
 			parent.MakeCurrent();
@@ -173,7 +173,13 @@ void main(void)
 			GL.LoadMatrix(ref extrin);
 
 			GL.MatrixMode(MatrixMode.Modelview);
-			GL.LoadIdentity();
+            if (modelView == null)
+                GL.LoadIdentity();
+            else
+            {
+                var mat = modelView.Value;
+                GL.LoadMatrix(ref mat);
+            }
 
 			var intrin = calib.Intrinsic.IntrinsicMatrix.Data;
 			var dist = calib.Intrinsic.DistortionCoeffs.Data;

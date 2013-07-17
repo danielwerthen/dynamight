@@ -17,6 +17,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         Matrix<float> IR2RGB;
         public Matrix<float> K2G;
         Matrix<float> EXTRA;
+
+        public OpenTK.Matrix4 GetModelView()
+        {
+            var rt = EXTRA;
+            return new OpenTK.Matrix4(
+                rt[0, 0], rt[1, 0], rt[2, 0], rt[3, 0],
+                rt[0, 1], rt[1, 1], rt[2, 1], rt[3, 1],
+                rt[0, 2], rt[1, 2], rt[2, 2], rt[3, 2],
+                rt[0, 3], rt[1, 3], rt[2, 3], rt[3, 3]);
+        }
+
         public KinectCalibrator(KinectSensor sensor, CalibrationResult calib)
         {
             this.calib = calib;
@@ -43,19 +54,20 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 {0,0,0,1}
             }).Inverse();
 
-            //EXTRA = DenseMatrix.OfArray(new Single[,] 
-            //{
-            //    { 1,0,0,-0.02f },
-            //    { 0,1,0,0.05f },
-            //    { 0,0,1,0 },
-            //    { 0,0,0,1 }
-            //});
-            EXTRA = K2G * IR2RGB * IR2RGB;
+            var flip = DenseMatrix.OfArray(new Single[,] 
+            {
+                { -1,0,0,0 },
+                { 0,-1,0,0 },
+                { 0,0,1,0 },
+                { 0,0,0,1 }
+            });
+            EXTRA = K2G * IR2RGB * IR2RGB * flip;
         }
 
         public float[] ToGlobal(SkeletonPoint point)
         {
-            var depth = new DenseVector(new float[] { -point.X, -point.Y, point.Z, 1 });
+            
+            var depth = new DenseVector(new float[] { point.X, point.Y, point.Z, 1 });
             //var tdepth = K2G.Multiply(IR2RGB.Multiply(IR2RGB.Multiply(depth)));
             var tdepth = EXTRA.Multiply(depth);
             return tdepth.ToArray();

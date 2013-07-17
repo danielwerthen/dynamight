@@ -1,4 +1,5 @@
-﻿using OpenTK;
+﻿using Graphics.Utils;
+using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using System;
 using System.Collections.Generic;
@@ -104,7 +105,7 @@ void main(void)
 
             GL.Light(LightName.Light0, LightParameter.Diffuse, OpenTK.Graphics.Color4.White);
             GL.Light(LightName.Light0, LightParameter.ConstantAttenuation, 1);
-            GL.Light(LightName.Light0, LightParameter.LinearAttenuation, 4);
+            GL.Light(LightName.Light0, LightParameter.LinearAttenuation, 4f);
             GL.Light(LightName.Light0, LightParameter.QuadraticAttenuation, 0);
             GL.Enable(EnableCap.Lighting);
             GL.Enable(EnableCap.Light0);
@@ -126,20 +127,90 @@ void main(void)
             base.Unload();
         }
 
-        public void SetPositions(Vector3[] vertices)
+        private float[] normal(float[] p0, float[] p1, float[] p2)
         {
-            VBO = new VertexC4ubV3f[vertices.Length];
-            for (var i = 0; i < vertices.Length; i++)
-            {
-                VBO[i].R = 100;
-                VBO[i].G = 100;
-                VBO[i].B = 100;
-                VBO[i].A = 255;
-                VBO[i].Position = vertices[i];
-                VBO[i].Normal = new Vector3(0, 0, 1);
-            }
+            var u = new float[] { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+            var v = new float[] { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
+            var n = new float[] { u[1] * v[2] - u[2] * v[1],
+                u[2] * v[0] - u[0] * v[2],
+                u[0] * v[1] - u[1] * v[0] };
+            if (n[2] < 0)
+                return n;
+            else
+                return new float[] { -n[0], -n[1], -n[2] };
         }
 
+        public float[] GetNormal(float[] p, float[][] closest)
+        {
+            var ns = closest.Where(c => c[0] != p[0] && c[1] != p[1] && c[2] != p[2])
+                .OrderBy(c => (c[0] - p[0]) * (c[0] - p[0]) + (c[1] - p[1]) * (c[1] - p[1]) + (c[2] - p[2]) * (c[2] - p[2]))
+                .Take(6)
+                .ToArray();
+            int count = 0;
+            var ids = ns.Select(_ => count++).ToArray();
+            var normals = ids.Skip(1).Select(i => normal(p, ns[i - 1], ns[i])).ToArray();
+            return normals.Aggregate((v1, v2) => 
+                new float[] { (v1[0] + v2[0]) / (float)normals.Count(), 
+                    (v1[1] + v2[1]) / (float)normals.Count(), 
+                    (v1[2] + v2[2]) / (float)normals.Count() });
+        }
+
+        public void SetPositions(float[][] vertices)
+        {
+            //using (var tree = new OctreeLookup(vertices))
+            //{
+                VBO = new VertexC4ubV3f[vertices.Length];
+                for (var i = 0; i < vertices.Length; i++)
+                {
+                    Vector3 norm = new Vector3(0, 0, -1);
+                    //var v = vertices[i];
+                    //var closest = tree.Neighbours(v, 0.01f).ToArray();
+                    //if (closest.Count() > 3)
+                    //{
+                    //    var n = GetNormal(v, closest);
+                    //    norm = new Vector3(n[0], n[1], v[2]);
+                    //}
+                    VBO[i].R = 100;
+                    VBO[i].G = 100;
+                    VBO[i].B = 100;
+                    VBO[i].A = 255;
+                    VBO[i].Position = new Vector3(vertices[i][0], vertices[i][1], vertices[i][2]);
+                    VBO[i].Normal = norm;
+                }
+            //}
+        }
+
+        public void SetPositions(Vector3[] vertices)
+        {
+            if (VBO.Length != vertices.Length)
+            {
+                VBO = new VertexC4ubV3f[vertices.Length];
+                for (var i = 0; i < vertices.Length; i++)
+                {
+                    Vector3 norm = new Vector3(0, 0, -1);
+                    //var v = vertices[i];
+                    //var closest = tree.Neighbours(v, 0.01f).ToArray();
+                    //if (closest.Count() > 3)
+                    //{
+                    //    var n = GetNormal(v, closest);
+                    //    norm = new Vector3(n[0], n[1], v[2]);
+                    //}
+                    VBO[i].R = 150;
+                    VBO[i].G = 150;
+                    VBO[i].B = 150;
+                    VBO[i].A = 255;
+                    VBO[i].Position = vertices[i];
+                    VBO[i].Normal = norm;
+                }
+            }
+            else
+            {
+                for (var i = 0; i < vertices.Length; i++)
+                {
+                    VBO[i].Position = vertices[i];
+                }
+            }
+        }
         Vector4 Light0Pos;
 
         public Vector4 SetLight0Pos(float[] v)
