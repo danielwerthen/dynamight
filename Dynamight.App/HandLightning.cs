@@ -38,7 +38,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new PointCloudProgram(69f);
+            var program = new PointCloudProgram(19f);
             window.SetProgram(program);
             program.Draw().All((xp, yp) =>
             {

@@ -41,6 +41,7 @@ void main(void)
 
 varying vec3 N;
 varying vec3 v;
+uniform sampler2D COLORTABLE;
 
 void main(void)
 {
