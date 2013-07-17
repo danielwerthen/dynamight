@@ -29,7 +29,7 @@ void main(void)
     gl_FrontColor = gl_Color;
     gl_TexCoord[0] = gl_MultiTexCoord0; 
     vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
-    v = vec3(gl_ModelViewMatrix * gl_Vertex);       
+    v = vec3(gl_ModelViewProjectionMatrix * gl_Vertex);       
     N = normalize(gl_NormalMatrix * gl_Normal);
     gl_Position = distort(V);
 
@@ -44,9 +44,12 @@ varying vec3 v;
 void main(void)
 {
    vec3 D = gl_LightSource[0].position.xyz - v;
-   float d = 1.0 - min(sqrt(D.x*D.x + D.y*D.y + D.z*D.z) / 8.0, 1.0);
+   float dist = distance(gl_LightSource[0].position.xyz, v);
+   float attn = 1.0/( gl_LightSource[0].constantAttenuation + 
+                    gl_LightSource[0].linearAttenuation * dist +
+                    gl_LightSource[0].quadraticAttenuation * dist * dist );
    vec3 L = normalize(D);   
-   vec4 Idiff = d * gl_FrontLightProduct[0].diffuse * max(dot(N,L), 0.0);  
+   vec4 Idiff = attn * gl_FrontLightProduct[0].diffuse * max(dot(N,L), 0.0);  
    Idiff = clamp(Idiff, 0.0, 1.0); 
 
    gl_FragColor = Idiff;
@@ -100,6 +103,9 @@ void main(void)
 
 
             GL.Light(LightName.Light0, LightParameter.Diffuse, OpenTK.Graphics.Color4.White);
+            GL.Light(LightName.Light0, LightParameter.ConstantAttenuation, 1);
+            GL.Light(LightName.Light0, LightParameter.LinearAttenuation, 4);
+            GL.Light(LightName.Light0, LightParameter.QuadraticAttenuation, 0);
             GL.Enable(EnableCap.Lighting);
             GL.Enable(EnableCap.Light0);
             GL.Material(MaterialFace.Front, MaterialParameter.Ambient, new float[] { 0.3f, 0.3f, 0.3f, 1.0f });
@@ -130,19 +136,22 @@ void main(void)
                 VBO[i].B = 100;
                 VBO[i].A = 255;
                 VBO[i].Position = vertices[i];
-                VBO[i].Normal = new Vector3(1, 0, 1);
+                VBO[i].Normal = new Vector3(0, 0, 1);
             }
         }
 
-        public void SetLight0Pos(float[] v)
+        Vector4 Light0Pos;
+
+        public Vector4 SetLight0Pos(float[] v)
         {
-            var vg = this.Transform(v);
-            GL.Light(LightName.Light0, LightParameter.Position, vg);
+            return Light0Pos = this.Transform(v);
         }
 
         public override void Render()
         {
             base.Render();
+
+            GL.Light(LightName.Light0, LightParameter.Position, Light0Pos);
 
             // Tell OpenGL to discard old VBO when done drawing it and reserve memory _now_ for a new buffer.
             // without this, GL would wait until draw operations on old VBO are complete before writing to it

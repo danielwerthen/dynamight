@@ -33,11 +33,12 @@ namespace Dynamight.App
 
             var program = new PointCloudProgram(39f);
             window.SetProgram(program);
-            program.Draw().All((xp, yp) => {
+            program.Draw().All((xp, yp) =>
+            {
                 var x = 0.5 - xp;
                 var y = 0.5 - yp;
-                var i = Math.Sqrt(x * x + y * y) *2.5;
-                if ( i > 1)
+                var i = Math.Sqrt(x * x + y * y) * 2.5;
+                if (i > 1)
                     i = 1;
                 i = Math.Pow(1 - i, 3);
                 byte ii = (byte)(i * 255);
@@ -58,6 +59,8 @@ namespace Dynamight.App
             {
                 using (var frame = sensor.SkeletonStream.OpenNextFrame(10000))
                 {
+                    if (frame == null)
+                        return null;
                     Skeleton[] skeletons = new Skeleton[frame.SkeletonArrayLength];
                     frame.CopySkeletonDataTo(skeletons);
                     var rhand = skeletons.Where(sk => sk.TrackingState == SkeletonTrackingState.Tracked)
@@ -72,18 +75,50 @@ namespace Dynamight.App
             };
 
             float dt = 0;
+            {
+                float[] hand = new float[] { 0.124f, 0.50f, -0.1f, 1f };
+                {
+                    var t = program.SetLight0Pos(hand);
+                    Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
+                    Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
+                }
+                window.KeyPress += (o, e) =>
+                {
+                    if (e.KeyChar == 'w')
+                        hand[1] += 0.1f;
+                    else if (e.KeyChar == 's')
+                        hand[1] -= 0.1f;
+                    if (e.KeyChar == 'a')
+                        hand[0] += 0.1f;
+                    else if (e.KeyChar == 'd')
+                        hand[0] -= 0.1f;
+                    if (e.KeyChar == 'r')
+                        hand[2] += 0.1f;
+                    else if (e.KeyChar == 'f')
+                        hand[2] -= 0.1f;
+                    var t = program.SetLight0Pos(hand);
+                    Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
+                    Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
+                };
+            }
 
             while (true)
             {
                 var hand = getHand();
                 var test = cam.GetDepth(10000);
                 var sp = test.Select(f => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, f));
-                var globals = kc.ToGlobal(sp).Where(g => g[2] < -0.0f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
-                //program.SetLight0Pos(new float[] { 1, 0, 1.33f, 1 });
+                var globals = kc.ToGlobal(sp).Where(g => g[2] > -0.1f).Select(v => new Vector3(v[0], v[1], v[2])).ToArray();
+                //program.SetLight0Pos(new float[] { 0.16f, -0.14f, 0.24f, 1 });
                 if (hand != null)
-                    program.SetLight0Pos(hand);
+                {
+                    var t = program.SetLight0Pos(hand);
+                    Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
+                    Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
+                    //Console.Write("Done ");
+                }
                 program.SetPositions(globals);
                 window.RenderFrame();
+                window.ProcessEvents();
                 //{
                 //    var projected = pc.Transform(globals.Where(g => g[2] > -0.0f).ToArray());
                 //    projector.DrawPoints(projected,2, Color.Gray);
