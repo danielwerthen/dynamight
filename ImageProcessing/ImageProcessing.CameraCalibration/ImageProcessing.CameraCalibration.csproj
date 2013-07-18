@@ -97,7 +97,6 @@
       <DependentUpon>ProjectorForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Utils\SkeletonCamera.cs" />
-    <Compile Include="Utils\TriplexCamera.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

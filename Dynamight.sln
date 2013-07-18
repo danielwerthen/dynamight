@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Graphics.Projection", "Grap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OctreeSearch", "ThirdParty\Octree\Octree\OctreeSearch.csproj", "{73B51B31-1208-4EE6-B1C3-9D281C0EE8F4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dynamight.Processing", "Dynamight.Processing\Dynamight.Processing.csproj", "{AEE1A637-8C62-4EE0-851C-072A3CC1D517}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -145,6 +147,12 @@ Global
 		{73B51B31-1208-4EE6-B1C3-9D281C0EE8F4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{73B51B31-1208-4EE6-B1C3-9D281C0EE8F4}.Release|x86.ActiveCfg = Release|x86
 		{73B51B31-1208-4EE6-B1C3-9D281C0EE8F4}.Release|x86.Build.0 = Release|x86
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEE1A637-8C62-4EE0-851C-072A3CC1D517}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

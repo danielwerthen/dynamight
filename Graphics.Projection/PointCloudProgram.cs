@@ -183,25 +183,24 @@ void main(void)
 
         public void SetPositions(Vector3[] vertices)
         {
+            Vector3 norm = new Vector3(0, 0, -1);
+            SetPositions(vertices, vertices.Select(_ => norm).ToArray(), vertices.Select(_ => System.Drawing.Color.White).ToArray());
+        }
+
+        public void SetPositions(Vector3[] vertices, Vector3[] normals, System.Drawing.Color[] colors)
+        {
             if (VBO.Length != vertices.Length)
             {
                 VBO = new VertexC4ubV3f[vertices.Length];
                 for (var i = 0; i < vertices.Length; i++)
                 {
-                    Vector3 norm = new Vector3(0, 0, -1);
-                    //var v = vertices[i];
-                    //var closest = tree.Neighbours(v, 0.01f).ToArray();
-                    //if (closest.Count() > 3)
-                    //{
-                    //    var n = GetNormal(v, closest);
-                    //    norm = new Vector3(n[0], n[1], v[2]);
-                    //}
-                    VBO[i].R = 150;
-                    VBO[i].G = 150;
-                    VBO[i].B = 150;
-                    VBO[i].A = 255;
+
+                    VBO[i].R = colors[i].R;
+                    VBO[i].G = colors[i].G;
+                    VBO[i].B = colors[i].B;
+                    VBO[i].A = colors[i].A;
                     VBO[i].Position = vertices[i];
-                    VBO[i].Normal = norm;
+                    VBO[i].Normal = normals[i];
                 }
             }
             else

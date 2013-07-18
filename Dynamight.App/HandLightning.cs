@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Graphics.Utils;
+using Dynamight.Processing;
 
 namespace Dynamight.App
 {
@@ -59,9 +60,9 @@ namespace Dynamight.App
 
             while (true)
             {
-                var triData = triplex.Trigger(1000);
-                if (triData.Length > 1)
-                    triData.ToString();
+                var players = triplex.Trigger(1000);
+                if (players == null)
+                    continue;
             }
 
             //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
