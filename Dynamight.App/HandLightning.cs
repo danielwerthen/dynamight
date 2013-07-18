@@ -20,11 +20,6 @@ namespace Dynamight.App
     {
         public static void Run(string[] args)
         {
-            var fls = new float[10];
-            Random r = new Random();
-            for (var i = 0; i < fls.Length; i++)
-                fls[i] = (float)r.NextDouble() * 10;
-            var res = fls.RadixSort();
 
             var camfile = args.FirstOrDefault() ?? Calibration.KinectDefaultFileName;
             var projfile = args.Skip(1).FirstOrDefault() ?? Calibration.ProjectorDefaultFileName;
@@ -54,11 +49,20 @@ namespace Dynamight.App
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             var format = DepthImageFormat.Resolution80x60Fps30;
-            DepthCamera cam = new DepthCamera(sensor, format);
+            DepthCamera depthCam = new DepthCamera(sensor, format);
+            SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
+            TriplexCamera triplex = new TriplexCamera(sensor, depthCam, skeletonCam);
             KinectCalibrator kc = new KinectCalibrator(sensor, cc);
             sensor.Start();
             sensor.SkeletonStream.Enable();
             program.SetProjection(pc, kc.GetModelView());
+
+            while (true)
+            {
+                var triData = triplex.Trigger(1000);
+                if (triData.Length > 1)
+                    triData.ToString();
+            }
 
             //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
             //window.RenderFrame();
@@ -112,7 +116,7 @@ namespace Dynamight.App
 
             while (true)
             {
-                var test = cam.GetDepth(10000);
+                var test = depthCam.GetDepth(10000);
                 if (test == null)
                     continue;
                 System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();

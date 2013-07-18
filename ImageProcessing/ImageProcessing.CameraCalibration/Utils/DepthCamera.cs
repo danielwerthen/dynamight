@@ -47,6 +47,17 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             }
         }
 
+        public IEnumerable<T> Get<T>(int wait, Func<DepthImagePixel, Point, Size, T> getter)
+        {
+            Size? size;
+            var data = GetDepth(wait, out size);
+            if (data == null)
+                return new T[0];
+            var pixelSize = size.Value;
+            return Range.OfInts(pixelSize.Height).SelectMany(y => Range.OfInts(pixelSize.Width).Select((x) =>
+                getter(data[x + y * pixelSize.Width], new Point(x, y), pixelSize)));
+        }
+
         public DepthImagePoint[] GetDepth(int wait)
         {
             Size? size;
