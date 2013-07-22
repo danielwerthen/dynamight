@@ -34,7 +34,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new PointCloudProgram(19f);
+            var program = new PointCloudProgram(39f);
             window.SetProgram(program);
             program.Draw().All((xp, yp) =>
             {
@@ -57,39 +57,11 @@ namespace Dynamight.App
             sensor.Start();
             sensor.SkeletonStream.Enable();
             program.SetProjection(pc, kc.GetModelView());
-
-            while (true)
-            {
-                var players = triplex.Trigger(1000);
-                if (players == null)
-                    continue;
-            }
-
-            //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
-            //window.RenderFrame();
-
-            Func<float[]> getHand = () =>
-            {
-                using (var frame = sensor.SkeletonStream.OpenNextFrame(100))
-                {
-                    if (frame == null)
-                        return null;
-                    Skeleton[] skeletons = new Skeleton[frame.SkeletonArrayLength];
-                    frame.CopySkeletonDataTo(skeletons);
-                    var rhand = skeletons.Where(sk => sk.TrackingState == SkeletonTrackingState.Tracked)
-                        .SelectMany(sk => sk.Joints).Where(j => j.TrackingState != JointTrackingState.NotTracked)
-                        .Where(j => j.JointType == JointType.HandRight)
-                        .Select(j => j.Position).ToArray();
-                    if (rhand.Length > 0)
-                        return kc.ToGlobal(rhand.First());
-                    else
-                        return null;
-                }
-            };
-
+            Rendering rend = new Rendering(program);
+            
             float dt = 0;
             {
-                float[] hand = new float[] { 0.124f, 0.50f, 2.7f, 1f };
+                float[] hand = new float[] { 0.124f, -0.9f, 1.7f, 1f };
                 {
                     var t = program.SetLight0Pos(hand);
                     Console.Write("({0}, {1}, {2})  ", hand[0], hand[1], hand[2]);
@@ -114,6 +86,39 @@ namespace Dynamight.App
                     Console.WriteLine("({0}, {1}, {2})", t.X, t.Y, t.Z);
                 };
             }
+
+
+            while (true)
+            {
+                var players = triplex.Trigger(1000);
+                if (players == null)
+                    continue;
+                rend.Render(players, sensor, format);
+                window.RenderFrame();
+                window.ProcessEvents();
+            }
+
+            //program.SetPositions(new Vector3[] { new Vector3(0.0f, -0.1f, 0) });
+            //window.RenderFrame();
+
+            Func<float[]> getHand = () =>
+            {
+                using (var frame = sensor.SkeletonStream.OpenNextFrame(100))
+                {
+                    if (frame == null)
+                        return null;
+                    Skeleton[] skeletons = new Skeleton[frame.SkeletonArrayLength];
+                    frame.CopySkeletonDataTo(skeletons);
+                    var rhand = skeletons.Where(sk => sk.TrackingState == SkeletonTrackingState.Tracked)
+                        .SelectMany(sk => sk.Joints).Where(j => j.TrackingState != JointTrackingState.NotTracked)
+                        .Where(j => j.JointType == JointType.HandRight)
+                        .Select(j => j.Position).ToArray();
+                    if (rhand.Length > 0)
+                        return kc.ToGlobal(rhand.First());
+                    else
+                        return null;
+                }
+            };
 
             while (true)
             {

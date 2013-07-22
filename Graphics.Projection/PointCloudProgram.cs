@@ -45,16 +45,18 @@ uniform sampler2D COLORTABLE;
 
 void main(void)
 {
-   vec3 D = gl_LightSource[0].position.xyz - v;
+   vec3 D = v - gl_LightSource[0].position.xyz;
+   D = vec3(0.0,0.0,1.0);
    float dist = distance(gl_LightSource[0].position.xyz, v);
    float attn = 1.0/( gl_LightSource[0].constantAttenuation + 
                     gl_LightSource[0].linearAttenuation * dist +
                     gl_LightSource[0].quadraticAttenuation * dist * dist );
+   attn = 0.99;
    vec3 L = normalize(D);   
-   vec4 Idiff = attn * gl_FrontLightProduct[0].diffuse * max(dot(N,L), 0.0);  
+   vec4 Idiff = attn * gl_FrontLightProduct[0].diffuse * max(dot(N,L), 0.0) + gl_FrontLightProduct[0].ambient;  
    Idiff = clamp(Idiff, 0.0, 1.0); 
 
-   gl_FragColor = Idiff;
+   gl_FragColor = Idiff * gl_Color;
 }
 ";
 
@@ -86,7 +88,8 @@ void main(void)
             GL.Enable(EnableCap.Blend);
             GL.Disable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
-            GL.BlendFunc(BlendingFactorSrc.One, BlendingFactorDest.One);
+            GL.CullFace(CullFaceMode.Back);
+            GL.BlendFunc(BlendingFactorSrc.One, BlendingFactorDest.Zero);
             GL.Hint(HintTarget.PointSmoothHint, HintMode.Nicest);
 
             // Setup VBO state
@@ -105,6 +108,7 @@ void main(void)
 
 
             GL.Light(LightName.Light0, LightParameter.Diffuse, OpenTK.Graphics.Color4.White);
+            GL.Light(LightName.Light0, LightParameter.Ambient, new OpenTK.Graphics.Color4(100, 100, 100, 255));
             GL.Light(LightName.Light0, LightParameter.ConstantAttenuation, 1);
             GL.Light(LightName.Light0, LightParameter.LinearAttenuation, 4f);
             GL.Light(LightName.Light0, LightParameter.QuadraticAttenuation, 0);
