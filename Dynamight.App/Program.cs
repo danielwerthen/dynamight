@@ -38,6 +38,11 @@ namespace Dynamight.App
                 Run = TransformApp.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "MovingHeads", "mh" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = MovingHeadsApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "quit", "q" }, 
                 Parameters = new string[] {  },
                 Run = (args) => exit = true

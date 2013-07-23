@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Graphics.Projection
 {
-	public abstract class World2ScreenProgram : Program
+	public abstract class World2ScreenProgram : TextureProgram
 	{
 
         public static float Rad(float x, float y)
@@ -232,16 +232,23 @@ void main(void)
 
 		}
 
-		public QuickDraw Draw()
+        public override void Resize(Size size)
+        {
+            this.bitmap = new Bitmap(this.bitmap, size);
+            LoadBitmap(this.bitmap);
+        }
+
+		public override QuickDraw Draw()
 		{
 			return QuickDraw.Start(this.bitmap, () => LoadBitmap(this.bitmap));
 		}
 
-		public void LoadBitmap(Bitmap bitmap)
+		public override void LoadBitmap(Bitmap bitmap)
 		{
 			if (parent == null)
 				throw new Exception("Can not load bitmap since the program hasn't been activated yet.");
 			parent.UpdateTexture(bitmap, texture);
+            this.bitmap = bitmap;
 		}
 
 		public override void Unload()

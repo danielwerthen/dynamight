@@ -53,8 +53,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Animatable.cs" />
+    <Compile Include="MovingHeadsProgram.cs" />
     <Compile Include="QuadCloudProgram.cs" />
     <Compile Include="PointCloudProgram.cs" />
+    <Compile Include="Renderable.cs" />
+    <Compile Include="Renderer.cs" />
     <Compile Include="World2ScreenProgram.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TransformativeProgram.cs" />

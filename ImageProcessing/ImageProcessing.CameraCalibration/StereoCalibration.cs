@@ -89,12 +89,20 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
+        public void FindDualPlaneCorners(Projector projector, Camera camera, Size pattern, out PointF[] cameraCorners, out PointF[] projectorCorners)
+        {
+            projectorCorners = projector.DrawCheckerboard(pattern, 0, 0, 0, 0.7);
+            var cpattern = new Size(pattern.Width - 1, pattern.Height - 1);
+            var img = camera.TakePicture(3);
+            cameraCorners = GetCameraCorners(img, cpattern, false);
+        }
+
         public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)
         {
             List<PointF[]> cameraCorners = new List<PointF[]>();
             List<PointF[]> projectorCorners = new List<PointF[]>();
             var cpattern = new Size(pattern.Width - 1, pattern.Height - 1);
-            int steps = 1;
+            int steps = 15;
             double rotx = 0, roty = 0, rotz = 0;
             for (int i = 0; i < steps; i++)
             {

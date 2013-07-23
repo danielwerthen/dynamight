@@ -294,7 +294,7 @@ namespace Dynamight.App
             CalibrationResult cc, pc;
             do
             {
-                cc = CalibrateCamera(camera, projector, out data, true, true, false);
+                cc = CalibrateCamera(camera, projector, out data, true, true, true);
 
                 pc = CalibrateProjector(camera, projector, cc, data, true, false);
 

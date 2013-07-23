@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Graphics.Geometry
 {
-    public abstract class Shape
+    public class Shape
     {
         #region utils
         public static int ColorToRgba32(Color c)
@@ -16,7 +16,6 @@ namespace Graphics.Geometry
             return (int)((c.A << 24) | (c.B << 16) | (c.G << 8) | c.R);
         }
         #endregion
-
 
         private Vector3[] vertices, normals;
         private Vector2[] texcoords;
@@ -66,6 +65,22 @@ namespace Graphics.Geometry
             {
                 colors = value;
             }
+        }
+
+        public static Shape Merge(Shape[] shapes)
+        {
+            Shape shape = new Shape();
+            shape.Vertices = shapes.SelectMany(s => s.Vertices).ToArray();
+            shape.Colors = shapes.SelectMany(s => s.Colors).ToArray();
+            shape.Normals = shapes.SelectMany(s => s.Normals).ToArray();
+            int c = 0, offset = 0;
+            shape.Indices = shapes.SelectMany(s =>
+            {
+                offset += shapes[c++].Vertices.Length;
+                return s.Indices.Select(i => i + offset);
+            }).ToArray();
+            shape.Texcoords = shapes.SelectMany(s => s.Texcoords).ToArray();
+            return shape;
         }
     }
 }

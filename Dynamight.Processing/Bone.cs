@@ -196,22 +196,27 @@ namespace Dynamight.Processing
         //        });
         //}
 
-        public double[] Normal(Vector3 p, double scale)
+        public static double[] Normal(Vector3 p, double scale, Vector3 A, Vector3d Dir)
         {
-            var a = From.Position;
-            var s = (p.X - a.X) * Dir.X + 
-                (p.Y - a.Y) * Dir.Y + 
-                (p.Z - a.Z) * Dir.Z;
+            var s = (p.X - A.X) * Dir.X +
+                (p.Y - A.Y) * Dir.Y +
+                (p.Z - A.Z) * Dir.Z;
 
-            var x = new Vector3d(a.X + s * Dir.X,
-                a.Y + s * Dir.Y,
-                a.Z + s * Dir.Z);
+            var x = new Vector3d(A.X + s * Dir.X,
+                A.Y + s * Dir.Y,
+                A.Z + s * Dir.Z);
             var n = new double[] { 
                 x.X - p.X, 
                 x.Y - p.Y, 
                 x.Z - p.Z };
             var nl = Math.Sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
             return new double[] { -n[0] * nl * scale, -n[1] * nl * scale, -n[2] * nl * scale };
+        }
+
+        public double[] Normal(Vector3 p, double scale)
+        {
+            var a = new Vector3(this.From.Position.X, this.From.Position.Y, this.From.Position.Z);
+            return Normal(p, scale, a, this.Dir);
         }
 
         public static Vector3 Normal(Vector3 v, Bone[] bones, double[] scales)
