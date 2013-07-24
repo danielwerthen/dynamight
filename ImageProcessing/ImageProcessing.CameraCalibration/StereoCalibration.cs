@@ -89,12 +89,26 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
-        public void FindDualPlaneCorners(Projector projector, Camera camera, Size pattern, out PointF[] cameraCorners, out PointF[] projectorCorners)
+        public static PointF[] FindDualPlaneCorners(Camera camera, Size pattern)
         {
-            projectorCorners = projector.DrawCheckerboard(pattern, 0, 0, 0, 0.7);
             var cpattern = new Size(pattern.Width - 1, pattern.Height - 1);
             var img = camera.TakePicture(3);
-            cameraCorners = GetCameraCorners(img, cpattern, false);
+            return GetCameraCorners(img, cpattern, false);
+        }
+
+        public static CalibrationResult CalibrateProjector(Projector projector, PointF[][] cacalibdata, PointF[][] cameraCorners, PointF[][] projectorCorners, Size cameraPattern, float checkerboardSize)
+        {
+            var hm = CreateHomography(cameraCorners, projectorCorners);
+            var globals = GenerateCheckerBoard(cameraPattern, checkerboardSize, 0);
+            var globalCorners = cacalibdata.Select(row => globals).ToArray();
+            var proj = cacalibdata.Select(cs => cs.Select(c => new PointF(c.X, c.Y)).ToArray()).ToArray();
+            foreach (var p in proj)
+                hm.ProjectPoints(p);
+            IntrinsicCameraParameters projIntrin = new IntrinsicCameraParameters();
+            ExtrinsicCameraParameters[] projExtrins;
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projExtrins);
+
+            return new CalibrationResult() { Intrinsic = projIntrin, Extrinsic = projExtrins.First() };
         }
 
         public static CalibrationResult CalibrateProjector(Projector projector, Camera camera, Size pattern, CalibrationResult cameraCalib, PointF[][] cacalibdata, Size cameraPattern, float checkerboardSize)

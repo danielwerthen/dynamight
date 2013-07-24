@@ -61,7 +61,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 { 0,0,1,0 },
                 { 0,0,0,1 }
             });
-            EXTRA = K2G * IR2RGB * IR2RGB * flip;
+            EXTRA = K2G * flip;
         }
 
         public float[] ToGlobal(SkeletonPoint point)

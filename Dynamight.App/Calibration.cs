@@ -1,5 +1,6 @@
 ﻿using Dynamight.ImageProcessing.CameraCalibration;
 using Dynamight.ImageProcessing.CameraCalibration.Utils;
+using Dynamight.Processing.Audio;
 using Graphics;
 using Microsoft.Kinect;
 using System;
@@ -259,7 +260,7 @@ namespace Dynamight.App
             return calib;
         }
 
-        static CalibrationResult CalibrateProjector(Camera camera, Projector projector, CalibrationResult cameraCalib, PointF[][] cacalibdata, bool reload = false, bool save = true)
+        static CalibrationResult CalibrateProjector(KinectSensor sensor, Camera camera, Projector projector, CalibrationResult cameraCalib, PointF[][] cacalibdata, bool reload = false, bool save = true)
         {
             CalibrationResult result;
             string datafile = "projectorcalibration.xml";
@@ -267,7 +268,41 @@ namespace Dynamight.App
                 result = Utils.DeSerializeObject<CalibrationResult>(datafile);
             else
             {
-                result = StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7, 4), 0.05f);
+                VoiceCommander commander = new VoiceCommander(sensor);
+                commander.LoadChoices("Shoot", "Ready", "Next", "Continue", "Carry on", "Smaller", "Bigger", "Go", "Stop");
+                List<PointF[]> cam = new List<PointF[]>(), proj = new List<PointF[]>();
+                Size pattern = new Size(8, 7);
+                PointF[] cc;
+                PointF[] pc;
+                double size = 0.5;
+                pc = projector.DrawCheckerboard(pattern, 0, 0, 0, size);
+                while (true)
+                {
+                    var word = commander.Recognize("Ready?");
+                    if (word == "Bigger")
+                    {
+                        size += 0.1;
+                        pc = projector.DrawCheckerboard(pattern, 0, 0, 0, size);
+                        continue;
+                    }
+                    else if (word == "Smaller")
+                    {
+                        size -= 0.1;
+                        pc = projector.DrawCheckerboard(pattern, 0, 0, 0, size);
+                        continue;
+                    }
+                    if (word == "Stop")
+                        break;
+                    cc = StereoCalibration.FindDualPlaneCorners(camera, pattern);
+                    if (cc != null && pc != null)
+                    {
+                        cam.Add(cc);
+                        proj.Add(pc);
+                    }
+                }
+                projector.DrawBackground(Color.Black);
+                result = StereoCalibration.CalibrateProjector(projector, cacalibdata, cam.ToArray(), proj.ToArray(), new Size(7, 4), 0.05f);
+                //result = StereoCalibration.CalibrateProjector(projector, camera, new Size(8, 7), cameraCalib, cacalibdata, new Size(7, 4), 0.05f);
                 if (save)
                     Utils.SerializeObject(result, datafile);
             }
@@ -287,6 +322,8 @@ namespace Dynamight.App
             window.ResizeGraphics();
             StereoCalibration.DebugWindow = window;
             KinectSensor sensor = KinectSensor.KinectSensors.First();
+            sensor.Start();
+
             Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
             Projector projector = new Projector();
             PointF[][] data;
@@ -294,9 +331,9 @@ namespace Dynamight.App
             CalibrationResult cc, pc;
             do
             {
-                cc = CalibrateCamera(camera, projector, out data, true, true, true);
+                cc = CalibrateCamera(camera, projector, out data, false, true, true);
 
-                pc = CalibrateProjector(camera, projector, cc, data, true, false);
+                pc = CalibrateProjector(sensor, camera, projector, cc, data, true, false);
 
                 var peas = new float[][] {
                     new float[] { 0f, 0f, 0.0f },
@@ -321,119 +358,6 @@ namespace Dynamight.App
             projector.Close();
             camera.Dispose();
             sensor.Stop();
-        }
-
-        [Obsolete]
-        static void Main2(string[] args)
-        {
-            var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
-            var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
-            window.Load();
-            window.ResizeGraphics();
-            StereoCalibration.DebugWindow = window;
-
-            KinectSensor sensor = KinectSensor.KinectSensors.First();
-
-            Camera camera = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
-
-
-            Projector projector = new Projector();
-
-            PointF[][] data;
-            bool reload = true;
-            var cc = CalibrateCamera(camera, projector, out data, reload, true);
-            var pc = CalibrateProjector(camera, projector, cc, data, true);
-            //var ic = CalibrateIR(sensor, camera, projector, cc, data);
-
-            if (false)
-            {
-
-                var joints = Utils.DeSerializeObject<SkeletonPoint[]>("skeleton.xml");
-                var kc2 = new KinectCalibrator(sensor, cc);
-                var gour = joints.Select(p => kc2.ToGlobal(p)).ToArray();
-                var ourway = cc.Transform(gour);
-                var apiway = joints.Select(p => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(p, ColorImageFormat.RgbResolution1280x960Fps12))
-                    .Select(p => new PointF(p.X, p.Y)).ToArray();
-                var projway = pc.Transform(gour);
-                var pic = new Bitmap("reference.bmp");
-                QuickDraw.Start(pic).Color(Color.Green).DrawPoint(ourway, 5)
-                    .Color(Color.Red).DrawPoint(apiway, 5).Finish();
-                window.DrawBitmap(pic);
-                projector.DrawPoints(projway, 5);
-                var globals = kc2.ToGlobal(joints).ToArray();
-                var campoints = cc.Transform(globals);
-                var projpoints = pc.Transform(globals);
-                projector.DrawBackground(Color.Black);
-                projector.DrawPoints(projpoints, 5);
-                while (true)
-                    Thread.Sleep(500);
-            }
-
-
-
-            sensor.Stop();
-            sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30);
-            //sensor.ColorStream.Enable(ColorImageFormat.RgbResolution640x480Fps30);
-            sensor.SkeletonStream.Enable();
-            sensor.Start();
-            projector.DrawBackground(System.Drawing.Color.Black);
-            var peas = new float[][] {
-                new float[] { 0f, 0f, 0.0f },
-                new float[] { 0.5f, 0f, 0.0f },
-                new float[] { 0f, -0.5f, 0.0f },
-                new float[] { 0.5f, -0.5f, 0.0f },
-            };
-            var tpe = pc.Transform(peas);
-            var tpp = cc.Transform(peas);
-            projector.DrawPoints(tpe, 25);
-            var pic2 = camera.TakePicture(0);
-            QuickDraw.Start(pic2).Color(Color.Green).DrawPoint(tpp, 15).Finish();
-            window.DrawBitmap(pic2);
-
-            var kc = new KinectCalibrator(sensor, cc);
-
-            while (sensor.IsRunning)
-            {
-                var skeletons = new Skeleton[0];
-                using (var frame = sensor.SkeletonStream.OpenNextFrame(1000))
-                {
-                    if (frame != null)
-                    {
-                        skeletons = new Skeleton[frame.SkeletonArrayLength];
-                        frame.CopySkeletonDataTo(skeletons);
-                    }
-                    else
-                        continue;
-                    var allJoints = skeletons.Where(row => row.TrackingState == SkeletonTrackingState.Tracked)
-                        .SelectMany(skeleton => skeleton.Joints.Where(joint => joint.TrackingState == JointTrackingState.Tracked)).ToArray();// && joint.JointType == JointType.HandRight));
-                    var jpoints = allJoints.Select(j => j.Position).ToArray();
-                    var points = kc.ToGlobal(jpoints).ToArray();
-                    if (points.Length > 0)
-                    {
-                        //Console.Clear();
-                        //for (var i = 0; i < allJoints.Length; i++)
-                        //{
-                        //    Console.WriteLine("{0}: ({1}, {2}, {3})",
-                        //        allJoints[i].JointType.ToString(),
-                        //        points[i][0],
-                        //        points[i][1],
-                        //        points[i][2]);
-                        //}
-                        var projp = pc.Transform(points.Concat(new float[][] { new float[] { 0f, 0f, 0f } }).ToArray());
-                        var camp = jpoints.Select(p => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(p, sensor.ColorStream.Format))
-                            .Select(ip => new PointF(1280 - ip.X, ip.Y)).ToArray();
-
-                        var camp2 = cc.Transform(points);
-                        projector.DrawPoints(projp, 10);
-                        var cp = camera.TakePicture(0);
-                        QuickDraw.Start(cp).Color(Color.Red).DrawPoint(camp2, 5)
-                            .Color(Color.Green).DrawPoint(camp, 5).Finish();
-                        window.DrawBitmap(cp);
-                        //var ppoints = calib.TransformC2P(points);
-                        //qd.DrawPoint(ppoints, 5);
-                    }
-                }
-            }
         }
 
         public static float[] MapSkeletonPoint(KinectSensor sensor, Joint joint)
