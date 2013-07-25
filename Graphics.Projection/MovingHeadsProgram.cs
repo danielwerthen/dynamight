@@ -71,9 +71,8 @@ void main(void)
             GL.CullFace(CullFaceMode.Back);
             textures = new MultipleTextures(this);
             Bitmap[] maps = new Bitmap[4];
-            for (int m = 0; m < 4; m++)
             {
-                var bitmap = new Bitmap(100, 100);
+                var bitmap = new Bitmap(300, 300);
 
                 QuickDraw.Start(bitmap).All((xp, yp) =>
                 {
@@ -91,21 +90,52 @@ void main(void)
                     byte ii = (byte)(i * 255);
                     return Color.FromArgb(ii, 245, 150, 135);
                 }).Finish();
-                //QuickDraw.Start(bitmap).Fill(Color.FromArgb(50 + 50 * i, 0, 0)).Finish();
-                maps[m] = bitmap;
+                maps[0] = bitmap;
             }
+            {
+                var bitmap = new Bitmap(300, 300);
+
+                QuickDraw.Start(bitmap).All((xp, yp) =>
+                {
+                    var x = 0.5 - xp;
+                    var y = 0.5 - yp;
+                    var i = Math.Sqrt(x * x + y * y);
+                    i = (Math.Sin(i * Math.PI * 8) + 1) / 2.0;
+                    byte ii = (byte)(i * 255);
+                    return Color.FromArgb(ii, 245, 150, 135);
+                }).Finish();
+                maps[1] = bitmap;
+                maps[2] = bitmap;
+                maps[3] = bitmap;
+            }
+
+
             textures.Load(maps);
             renderer = new Renderer();
-            renderer.Load(new Renderable[] {
-                new Renderable() {
-                    Shape = new Quad(new Vector3(0,0.15f,-1f), 1.5f, defaultE1, defaultE2, (v) => textures.Transform(v, 1)),
-                    Animatable = translator = new Translator() // new RadialSpin(new Vector3(0.2f,0,0))
-                }
-            });
-            renderer.Start();
         }
         Translator translator;
         Renderer renderer;
+        Renderable[] objects;
+
+        public Action<Vector3, bool>[] CreateRenderables(int count)
+        {
+            var ids = Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(count);
+            renderer.Load(objects = ids.Select(_ => new Renderable()
+            {
+                Shape = new Quad(new Vector3(0, 0.0f, 0f), 0.25f, defaultE1, defaultE2, (v) => textures.Transform(v, 0)),
+                Animatable = translator = new Translator() // new RadialSpin(new Vector3(0.2f,0,0))
+            }).ToArray());
+            renderer.Start();
+            return ids.Select(i =>
+            {
+                return (Action<Vector3, bool>)((v, visible) =>
+                {
+                    var r = objects[i];
+                    (r.Animatable as Translator).SetPosition(v);
+                    r.Visible = visible;
+                });
+            }).ToArray();
+        }
 
         public override void Unload()
         {
@@ -116,7 +146,7 @@ void main(void)
         Vector3 position = new Vector3(-0.1f, 0.0f, -1f);
         public void SetPosition(Vector3 v)
         {
-            translator.SetPosition(position);
+            translator.SetPosition(v);
         }
 
 

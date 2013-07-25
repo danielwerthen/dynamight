@@ -11,6 +11,7 @@ using Emgu.CV.Structure;
 using Emgu.CV;
 using Graphics;
 using Microsoft.Kinect;
+using Emgu.CV.CvEnum;
 
 namespace Dynamight.ImageProcessing.CameraCalibration
 {
@@ -76,6 +77,24 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 return true;
             var diff = a.Zip(b, (ap, bp) => Math.Abs(ap.X - bp.X) + Math.Abs(ap.Y - bp.Y)).Sum();
             return diff > thresh;
+        }
+
+        public static CalibrationResult CalibrateCamera(PointF[] cameraCorners, Camera camera, Size pattern, float checkerBoardSize, CalibrationResult useIntrinsic)
+        {
+            var globals = GenerateCheckerBoard(pattern, checkerBoardSize, 0);
+            var globalCorners = new MCvPoint3D32f[][] { globals };
+            var intrinsic = useIntrinsic.Intrinsic;
+            ExtrinsicCameraParameters[] cameraExtrinsicsArray;
+            CALIB_TYPE type = CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO | CALIB_TYPE.CV_CALIB_FIX_FOCAL_LENGTH | CALIB_TYPE.CV_CALIB_FIX_K1
+                | CALIB_TYPE.CV_CALIB_FIX_K2 | CALIB_TYPE.CV_CALIB_FIX_K3 | CALIB_TYPE.CV_CALIB_FIX_K4 | CALIB_TYPE.CV_CALIB_FIX_K5 | CALIB_TYPE.CV_CALIB_FIX_K6
+                | CALIB_TYPE.CV_CALIB_FIX_PRINCIPAL_POINT;
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, new PointF[][] { cameraCorners }, 
+                camera.Size, 
+                intrinsic, 
+                type, 
+                out cameraExtrinsicsArray);
+            var extrinsic = cameraExtrinsicsArray.First();
+            return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 
         public static CalibrationResult CalibrateCamera(PointF[][] cameraCorners, Camera camera, Size pattern, float checkerBoardSize)
