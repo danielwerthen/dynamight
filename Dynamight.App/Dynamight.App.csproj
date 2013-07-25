@@ -79,6 +79,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ExtrinsicCalibration.cs" />
+    <Compile Include="RemoteApp.cs" />
     <Compile Include="SkeletonApp.cs" />
     <Compile Include="TransformApp.cs" />
     <Compile Include="Utils.cs" />
@@ -91,6 +92,10 @@
     <ProjectReference Include="..\Dynamight.Processing\Dynamight.Processing.csproj">
       <Project>{aee1a637-8c62-4ee0-851c-072a3cc1d517}</Project>
       <Name>Dynamight.Processing</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Dynamight.RemoteSlave\Dynamight.RemoteSlave.csproj">
+      <Project>{854e15c5-3fde-49e5-b5bb-f8764d0ff0d6}</Project>
+      <Name>Dynamight.RemoteSlave</Name>
     </ProjectReference>
     <ProjectReference Include="..\Graphics.Projection\Graphics.Projection.csproj">
       <Project>{8be241ec-631d-4e45-8a56-81d7db072a67}</Project>

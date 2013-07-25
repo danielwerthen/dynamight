@@ -84,16 +84,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize, 0);
             var globalCorners = new MCvPoint3D32f[][] { globals };
             var intrinsic = useIntrinsic.Intrinsic;
-            ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            CALIB_TYPE type = CALIB_TYPE.CV_CALIB_FIX_ASPECT_RATIO | CALIB_TYPE.CV_CALIB_FIX_FOCAL_LENGTH | CALIB_TYPE.CV_CALIB_FIX_K1
-                | CALIB_TYPE.CV_CALIB_FIX_K2 | CALIB_TYPE.CV_CALIB_FIX_K3 | CALIB_TYPE.CV_CALIB_FIX_K4 | CALIB_TYPE.CV_CALIB_FIX_K5 | CALIB_TYPE.CV_CALIB_FIX_K6
-                | CALIB_TYPE.CV_CALIB_FIX_PRINCIPAL_POINT;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, new PointF[][] { cameraCorners }, 
-                camera.Size, 
-                intrinsic, 
-                type, 
-                out cameraExtrinsicsArray);
-            var extrinsic = cameraExtrinsicsArray.First();
+
+            var extrinsic = Emgu.CV.CameraCalibration.FindExtrinsicCameraParams2(globals, cameraCorners, intrinsic);
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
 

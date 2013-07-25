@@ -28,6 +28,11 @@ namespace Dynamight.App
                 Run = ExtrinsicCalibration.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "remotekinect", "rk" }, 
+                Parameters = new string[] { },
+                Run = RemoteApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "Lightning", "l" }, 
                 Parameters = new string[] { "camcalibfile", "projcalibfile" },
                 Run = HandLightning.Run
