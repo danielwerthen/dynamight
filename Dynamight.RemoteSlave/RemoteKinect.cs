@@ -1,10 +1,14 @@
 ﻿using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +19,16 @@ namespace Dynamight.RemoteSlave
     {
         public DepthImagePixel[] Pixels;
         public DepthImageFormat Format;
+    }
+
+    public class ColorImageEventArgs : EventArgs
+    {
+        public Bitmap Bitmap;
+    }
+
+    public class SkeletonsEventArgs : EventArgs
+    {
+        public Skeleton[] Skeletons;
     }
 
     public class RemoteKinect
@@ -32,6 +46,8 @@ namespace Dynamight.RemoteSlave
         }
 
         public event EventHandler<DepthImageEventArgs> ReceivedDepthImage;
+        public event EventHandler<ColorImageEventArgs> ReceivedColorImage;
+        public event EventHandler<SkeletonsEventArgs> ReceivedSkeletons;
 
         public RemoteKinect(IPEndPoint ip)
         {
@@ -51,6 +67,12 @@ namespace Dynamight.RemoteSlave
                     return 320 * 240 * sizeof(Int16);
                 case Commands.Depth640:
                     return 640 * 480 * sizeof(Int16);
+                case Commands.Color640:
+                    return 640 * 480 * 4 * sizeof(byte);
+                case Commands.Color1280:
+                    return 1280 * 960 * 4 * sizeof(byte);
+                case Commands.Skeleton:
+                    return RemoteSlave.SKELETON_BUFFER_LENGTH;
                 default:
                     return 0;
             }
@@ -82,6 +104,19 @@ namespace Dynamight.RemoteSlave
 
             }
         }
+
+        private Bitmap ByteToColorImage(byte[] pixelData, Size size)
+		{
+			Bitmap bmap = new Bitmap(size.Width, size.Height, PixelFormat.Format32bppRgb);
+			BitmapData bmapdata = bmap.LockBits(
+					new Rectangle(0, 0, size.Width, size.Height),
+					ImageLockMode.WriteOnly,
+					bmap.PixelFormat);
+			IntPtr ptr = bmapdata.Scan0;
+			Marshal.Copy(pixelData, 0, ptr, pixelData.Length);
+			bmap.UnlockBits(bmapdata);
+			return bmap;
+		}
 
         private DepthImagePixel[] ByteToDepthImagePixel(byte[] data, int length)
         {
@@ -124,14 +159,36 @@ namespace Dynamight.RemoteSlave
             }
             else if (command == Commands.Depth640)
             {
+                if (ReceivedDepthImage == null)
+                    return;
                 var format = DepthImageFormat.Resolution640x480Fps30;
                 DepthImagePixel[] pixels = ByteToDepthImagePixel(data, 640 * 480);
-                if (ReceivedDepthImage != null)
-                    ReceivedDepthImage(this, new DepthImageEventArgs { Format = format, Pixels = pixels });
+                ReceivedDepthImage(this, new DepthImageEventArgs { Format = format, Pixels = pixels });
             }
-            else
+            else if (command == Commands.Color640)
             {
-                throw new NotImplementedException("Please wait");
+                if (ReceivedColorImage == null)
+                    return;
+                Bitmap bitmap = ByteToColorImage(data, new Size(640, 480));
+                ReceivedColorImage(this, new ColorImageEventArgs { Bitmap = bitmap });
+            }
+            else if (command == Commands.Color1280)
+            {
+                if (ReceivedColorImage == null)
+                    return;
+                Bitmap bitmap = ByteToColorImage(data, new Size(1280, 960));
+                ReceivedColorImage(this, new ColorImageEventArgs { Bitmap = bitmap });
+            }
+            else if (command == Commands.Skeleton)
+            {
+                if (ReceivedSkeletons == null)
+                    return;
+                using (var ms = new MemoryStream(data))
+                {
+                    BinaryFormatter bf = new BinaryFormatter();
+                    var skeletons = (Skeleton[])bf.Deserialize(ms);
+                    ReceivedSkeletons(this, new SkeletonsEventArgs() { Skeletons = skeletons });
+                }
             }
         }
 
@@ -153,10 +210,19 @@ namespace Dynamight.RemoteSlave
                     }
                     else
                     {
-                        buffer = buffer.Concat(slave.Receive(ref point)).ToArray();
+                        try
+                        {
+                            var received = slave.Receive(ref point);
+                            buffer = buffer.Concat(received).ToArray();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Error receiving RemoteKinect socket");
+                            Console.WriteLine(e.Message);
+                        }
                         continue;
                     }
-                    var command = Program.ToCommand(commandHeader.Take(csize).ToArray());
+                    var command = RemoteSlave.ToCommand(commandHeader.Take(csize).ToArray());
                     var data = ReceiveFullBuffer(command, commandHeader.Skip(csize).ToArray(), out buffer);
                     HandlePackage(command, data);
                 }
@@ -170,7 +236,7 @@ namespace Dynamight.RemoteSlave
             stopper.Cancel();
             if (receiver != null)
                 receiver.Wait();
-            slave.Send(Program.ToBytes(command), sizeof(int));
+            slave.Send(RemoteSlave.ToBytes(command), sizeof(int));
 
             //var test = slave.Client.LocalEndPoint as IPEndPoint;
             //var point = new IPEndPoint(IPAddress.Any, innerPort);
@@ -186,7 +252,7 @@ namespace Dynamight.RemoteSlave
             if (receiver != null)
                 receiver.Wait();
             receiver = null;
-            slave.Send(Program.ToBytes(Commands.End), sizeof(int));
+            slave.Send(RemoteSlave.ToBytes(Commands.End), sizeof(int));
         }
     }
 }
