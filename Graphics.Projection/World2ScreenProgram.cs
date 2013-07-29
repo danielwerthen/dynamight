@@ -207,10 +207,7 @@ void main(void)
 			return null;
 		}
 
-		int texture, program;
-		TextureUnit unit = TextureUnit.Texture0;
-		ProgramWindow parent;
-		Bitmap bitmap;
+		int program;
 		public override void Load(ProgramWindow parent)
 		{
 			this.parent = parent;
@@ -227,28 +224,8 @@ void main(void)
 			program = parent.CreateProgram(vs, fs, gs);
 			GL.DeleteShader(vs);
 			GL.DeleteShader(fs);
-			this.bitmap = this.bitmap ?? new System.Drawing.Bitmap(parent.Width, parent.Height);
-			texture = parent.LoadTexture(this.bitmap, unit);
+            base.Load(parent);
 
-		}
-
-        public override void Resize(Size size)
-        {
-            this.bitmap = new Bitmap(this.bitmap, size);
-            LoadBitmap(this.bitmap);
-        }
-
-		public override QuickDraw Draw()
-		{
-			return QuickDraw.Start(this.bitmap, () => LoadBitmap(this.bitmap));
-		}
-
-		public override void LoadBitmap(Bitmap bitmap)
-		{
-			if (parent == null)
-				throw new Exception("Can not load bitmap since the program hasn't been activated yet.");
-			parent.UpdateTexture(bitmap, texture);
-            this.bitmap = bitmap;
 		}
 
 		public override void Unload()
@@ -262,8 +239,6 @@ void main(void)
 
 			if (program != 0)
 				GL.DeleteProgram(program);
-			if (texture != 0)
-				GL.DeleteTexture(texture);
 
 		}
 
@@ -273,8 +248,8 @@ void main(void)
 			GL.Clear(ClearBufferMask.ColorBufferBit |
 							 ClearBufferMask.DepthBufferBit);
 
-			GL.UseProgram(program);
-			GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
+            GL.UseProgram(program);
+            GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
 			GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
 			GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
 			GL.Uniform2(GL.GetUniformLocation(program, "F"), F);

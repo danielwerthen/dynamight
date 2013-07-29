@@ -76,6 +76,7 @@
     <Compile Include="Calibration.cs" />
     <Compile Include="HandLightning.cs" />
     <Compile Include="MovingHeadsApp.cs" />
+    <Compile Include="OverviewApp.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ExtrinsicCalibration.cs" />

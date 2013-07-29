@@ -226,8 +226,15 @@ namespace Dynamight.RemoteSlave
                 frame.CopyPixelDataTo(pixelData);
                 foreach (var stream in streams)
                 {
-                    stream.Write(ToBytes(cc.Value), 0, sizeof(int));
-                    stream.Write(pixelData, 0, pixelData.Length);
+                    try
+                    {
+                        stream.Write(ToBytes(cc.Value), 0, sizeof(int));
+                        stream.Write(pixelData, 0, pixelData.Length);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
                 }
             }
         }
@@ -387,19 +394,24 @@ namespace Dynamight.RemoteSlave
             int commandPort = args.Length > 0 ? int.Parse(args.First()) : 10500;
             RemoteTCPSlave tcp = new RemoteTCPSlave(commandPort);
             CancellationTokenSource ender = new CancellationTokenSource();
-            tcp.Start(ender.Token);
             Console.WriteLine("Ctrl-C to exit!");
             Console.CancelKeyPress += (o, e) =>
             {
                 ender.Cancel();
             };
             KinectSensor sensor = KinectSensor.KinectSensors.First(s => s.Status == KinectStatus.Connected);
+            sensor.Start();
+            Task proc = tcp.ProcessIncomingClients(ender.Token);
             while (!ender.IsCancellationRequested)
             {
+                if (proc.IsCompleted)
+                    proc = tcp.ProcessIncomingClients(ender.Token);
                 HandleDepthStreams(tcp, sensor);
                 HandleColorStreams(tcp, sensor);
                 HandleSkeletonStreams(tcp, sensor);
+                Thread.Yield();
             }
+            tcp.Close();
         }
 
         static void Main2(string[] args)

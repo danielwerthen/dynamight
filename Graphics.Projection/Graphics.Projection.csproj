@@ -55,6 +55,7 @@
   <ItemGroup>
     <Compile Include="Animatable.cs" />
     <Compile Include="MovingHeadsProgram.cs" />
+    <Compile Include="OverviewProgram.cs" />
     <Compile Include="QuadCloudProgram.cs" />
     <Compile Include="PointCloudProgram.cs" />
     <Compile Include="Renderable.cs" />

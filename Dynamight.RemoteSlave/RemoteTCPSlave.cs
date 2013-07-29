@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -15,13 +16,13 @@ namespace Dynamight.RemoteSlave
         public const int COMMAND_LENGTH = sizeof(Commands);
         private TcpListener listener;
         private List<Task> clientListeners = new List<Task>();
-        private Dictionary<Commands, List<NetworkStream>> writers = new Dictionary<Commands, List<NetworkStream>>();
+        private ConcurrentDictionary<Commands, List<NetworkStream>> writers = new ConcurrentDictionary<Commands, List<NetworkStream>>();
         private CancellationTokenSource _cancel;
         public RemoteTCPSlave(int port)
         {
             listener = new TcpListener(IPAddress.Loopback,port);
             _cancel = new CancellationTokenSource();
-
+            listener.Start();
         }
 
         public NetworkStream[] this[Commands command]
@@ -47,46 +48,69 @@ namespace Dynamight.RemoteSlave
             }
         }
 
-        private Task ListenToClient(TcpClient client)
+        private void CloseWriters(TcpClient client, NetworkStream stream)
         {
-            var token = _cancel.Token;
+            foreach (var list in writers.Values)
+                list.Remove(stream);
+        }
+
+        private Task ListenToClient(TcpClient client, CancellationToken token)
+        {
             return Task.Run(() =>
             {
                 var stream = client.GetStream();
                 byte[] commandBuffer = new byte[COMMAND_LENGTH];
                 while (!token.IsCancellationRequested)
                 {
-                    var reading = stream.ReadAsync(commandBuffer, 0, COMMAND_LENGTH);
-                    reading.Wait(token);
-                    if (!reading.IsCompleted || reading.Result != COMMAND_LENGTH)
-                        continue;
-                    HandleCommand(stream, RemoteSlave.ToCommand(commandBuffer), token);
+                    try
+                    {
+                        var reading = stream.ReadAsync(commandBuffer, 0, COMMAND_LENGTH);
+                        reading.Wait(token);
+                        if (!reading.IsCompleted || reading.Result != COMMAND_LENGTH)
+                            continue;
+                        var command = RemoteSlave.ToCommand(commandBuffer);
+                        if (command == Commands.End)
+                        {
+                            CloseWriters(client, stream);
+                            break;
+                        }
+                        else
+                            HandleCommand(stream, command, token);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                        CloseWriters(client, stream);
+                        break;
+                    }
                 }
                 client.Close();
             });
         }
 
-        private void HandleClient(TcpClient client)
+        private void HandleClient(TcpClient client, CancellationToken token)
         {
-            clientListeners.Add(ListenToClient(client));
+            clientListeners.Add(ListenToClient(client, token));
         }
 
-        public async Task ProcessIncomingClients()
+        public async Task ProcessIncomingClients(CancellationToken token)
         {
-            var client = await listener.AcceptTcpClientAsync();
-            HandleClient(client);
-        }
-
-        public void Start(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
+            try
             {
-                Task proc = ProcessIncomingClients();
-                proc.Wait(token);
-                if (proc.IsCompleted)
-                    continue;
+                var client = await listener.AcceptTcpClientAsync();
+                HandleClient(client, token);
             }
-            _cancel.Cancel();
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+        }
+
+        public void Close()
+        {
+            listener.Stop();
+            foreach (var t in clientListeners)
+                t.Wait();
         }
     }
 }

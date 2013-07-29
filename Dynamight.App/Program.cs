@@ -33,6 +33,11 @@ namespace Dynamight.App
                 Run = RemoteApp.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "overview", "o" }, 
+                Parameters = new string[] { },
+                Run = OverviewApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "Lightning", "l" }, 
                 Parameters = new string[] { "camcalibfile", "projcalibfile" },
                 Run = HandLightning.Run

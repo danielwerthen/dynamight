@@ -33,16 +33,18 @@ namespace Dynamight.RemoteSlave
 
     public class RemoteKinect
     {
-        UdpClient slave;
+        TcpClient slave;
         IPAddress ip;
         int port;
-        int innerPort = 10499;
+        NetworkStream stream;
+
         public RemoteKinect(string hostname, int port)
         {
-            slave = new UdpClient(innerPort);
+            slave = new TcpClient();
             slave.Connect(hostname, port);
             this.ip = (slave.Client.RemoteEndPoint as IPEndPoint).Address;
             this.port = (slave.Client.RemoteEndPoint as IPEndPoint).Port;
+            Init();
         }
 
         public event EventHandler<DepthImageEventArgs> ReceivedDepthImage;
@@ -51,10 +53,84 @@ namespace Dynamight.RemoteSlave
 
         public RemoteKinect(IPEndPoint ip)
         {
-            slave = new UdpClient();
+            slave = new TcpClient();
             slave.Connect(ip);
             this.ip = (slave.Client.RemoteEndPoint as IPEndPoint).Address;
             this.port = (slave.Client.RemoteEndPoint as IPEndPoint).Port;
+            Init();
+        }
+
+        private void Init()
+        {
+            if (!slave.Connected)
+                throw new Exception("Could not establish TCP Connection");
+            stream = slave.GetStream();
+        }
+
+        Task receiver = null;
+        CancellationTokenSource stopper = new CancellationTokenSource();
+        public void Start(Commands command)
+        {
+            stopper.Cancel();
+            if (receiver != null)
+                receiver.Wait();
+            stream.Write(RemoteSlave.ToBytes(command), 0, sizeof(int));
+            stopper = new CancellationTokenSource();
+            StartReceiving(stopper.Token);
+        }
+
+        private void StartReceiving(CancellationToken token)
+        {
+            int csize = sizeof(Commands);
+            receiver = Task.Run(() =>
+            {
+                byte[] buffer = new byte[0];
+                while (!token.IsCancellationRequested)
+                {
+                    byte[] commandHeader = new byte[csize];
+                    {
+                        int offset = 0;
+                        while (true)
+                        {
+                            var reader = stream.ReadAsync(commandHeader, offset, csize - offset);
+                            reader.Wait(token);
+                            if (!reader.IsCompleted)
+                                return;
+                            if (reader.Result + offset == csize)
+                                break;
+                            offset = offset + reader.Result;
+                        }
+                    }
+
+                    var command = RemoteSlave.ToCommand(commandHeader);
+                    {
+                        var length = BufferLength(command);
+                        var package = new byte[length];
+                        int offset = 0;
+                        while (true)
+                        {
+                            var reader = stream.ReadAsync(package, offset, length - offset);
+                            reader.Wait(token);
+                            if (!reader.IsCompleted)
+                                return;
+                            if (reader.Result + offset == length)
+                                break;
+                            offset = offset + reader.Result;
+                        }
+                        HandlePackage(command, package);
+                    }
+                }
+            });
+        }
+
+        public void Stop()
+        {
+            stopper.Cancel();
+            if (receiver != null)
+                receiver.Wait();
+            receiver = null;
+            stream.Write(RemoteSlave.ToBytes(Commands.End), 0, sizeof(int));
+            slave.Close();
         }
 
         private int BufferLength(Commands command)
@@ -75,33 +151,6 @@ namespace Dynamight.RemoteSlave
                     return RemoteSlave.SKELETON_BUFFER_LENGTH;
                 default:
                     return 0;
-            }
-        }
-
-        private byte[] ReceiveFullBuffer(Commands command, byte[] leftovers, out byte[] rest)
-        {
-            var length = BufferLength(command);
-            if (length <= leftovers.Length)
-            {
-                rest = leftovers.Skip(length).ToArray();
-                return leftovers.Take(length).ToArray();
-            }
-            else
-            {
-                while (length > leftovers.Length)
-                {
-                    var point = new IPEndPoint(ip, port);
-                    var data = slave.Receive(ref point);
-                    leftovers = leftovers.Concat(data).ToArray();
-                }
-                if (length <= leftovers.Length)
-                {
-                    rest = leftovers.Skip(length).ToArray();
-                    return leftovers.Take(length).ToArray();
-                }
-                else
-                    throw new Exception("Congrats, this should not happen.");
-
             }
         }
 
@@ -190,69 +239,6 @@ namespace Dynamight.RemoteSlave
                     ReceivedSkeletons(this, new SkeletonsEventArgs() { Skeletons = skeletons });
                 }
             }
-        }
-
-        private void StartReceiving(CancellationToken token)
-        {
-            int csize = sizeof(Commands);
-            receiver = Task.Run(() =>
-            {
-                byte[] buffer = new byte[0];
-                while (!token.IsCancellationRequested)
-                {
-                    var test = slave.Client.LocalEndPoint as IPEndPoint;
-                    var point = new IPEndPoint(IPAddress.Any, test.Port);
-                    byte[] commandHeader;
-                    if (buffer.Length >= csize)
-                    {
-                        commandHeader = buffer.Take(csize).ToArray();
-                        buffer = buffer.Skip(csize).ToArray();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var received = slave.Receive(ref point);
-                            buffer = buffer.Concat(received).ToArray();
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine("Error receiving RemoteKinect socket");
-                            Console.WriteLine(e.Message);
-                        }
-                        continue;
-                    }
-                    var command = RemoteSlave.ToCommand(commandHeader.Take(csize).ToArray());
-                    var data = ReceiveFullBuffer(command, commandHeader.Skip(csize).ToArray(), out buffer);
-                    HandlePackage(command, data);
-                }
-            });
-        }
-
-        Task receiver = null;
-        CancellationTokenSource stopper = new CancellationTokenSource();
-        public void Start(Commands command)
-        {
-            stopper.Cancel();
-            if (receiver != null)
-                receiver.Wait();
-            slave.Send(RemoteSlave.ToBytes(command), sizeof(int));
-
-            //var test = slave.Client.LocalEndPoint as IPEndPoint;
-            //var point = new IPEndPoint(IPAddress.Any, innerPort);
-            
-            //var test2 = slave.Receive(ref point);
-            stopper = new CancellationTokenSource();
-            StartReceiving(stopper.Token);
-        }
-
-        public void Stop()
-        {
-            stopper.Cancel();
-            if (receiver != null)
-                receiver.Wait();
-            receiver = null;
-            slave.Send(RemoteSlave.ToBytes(Commands.End), sizeof(int));
         }
     }
 }

@@ -33,22 +33,22 @@ namespace Dynamight.App
             kinect.ReceivedColorImage += (o, e) =>
             {
                 frames++;
-                //map = e.Bitmap;
-                //lock (sync)
-                //    Monitor.Pulse(sync);
+                map = e.Bitmap;
+                lock (sync)
+                    Monitor.Pulse(sync);
             };
             kinect.ReceivedDepthImage += (o, e) =>
             {
                 frames++;
                 e.Pixels.ToString();
             };
-            kinect.Start(Commands.Skeleton);
-            //while (true)
-            //{
-            //    lock (sync)
-            //        Monitor.Wait(sync);
-            //    window.DrawBitmap(map);
-            //}
+            kinect.Start(Commands.Color640);
+            while (true)
+            {
+                lock (sync)
+                    Monitor.Wait(sync);
+                window.DrawBitmap(map);
+            }
             while (true)
             {
                 Thread.Sleep(1000);

@@ -1,6 +1,7 @@
 ﻿using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Input;
 using OpenTK.Platform;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,8 @@ namespace Graphics
 	{
 		private DisplayDevice display;
 		private GraphicsContext glContext;
+        public KeyboardDevice Keyboard;
+        public MouseDevice Mouse;
 		public GraphicsWindow(int x, int y, int width, int height, DisplayDevice display, string title = "Window")
 			: base(x, y, width, height, title, GameWindowFlags.Default, GraphicsMode.Default, display)
 		{
@@ -27,6 +30,8 @@ namespace Graphics
 			glContext.MakeCurrent(WindowInfo);
 			(glContext as IGraphicsContextInternal).LoadAll();
 			LoadWindowHandle();
+            Keyboard = InputDriver.Keyboard[0];
+            Mouse = InputDriver.Mouse[0];
 		}
 
 		public GraphicsWindow(int width, int height, DisplayDevice display, string title = "Window")

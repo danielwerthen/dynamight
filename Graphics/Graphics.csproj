@@ -53,9 +53,12 @@
     <Compile Include="Geometry\Quad.cs" />
     <Compile Include="Geometry\Cube.cs" />
     <Compile Include="Geometry\Shape.cs" />
+    <Compile Include="Input\KeyboardAction.cs" />
+    <Compile Include="Input\KeyboardListener.cs" />
     <Compile Include="TextureProgram.cs" />
     <Compile Include="Textures\MultipleTextures.cs" />
     <Compile Include="Textures\Texture.cs" />
+    <Compile Include="Utils\Math.cs" />
     <Compile Include="Utils\OctreeLookup.cs" />
     <Compile Include="Utils\Sorting.cs" />
     <Compile Include="StructuredLightProgram.cs" />
