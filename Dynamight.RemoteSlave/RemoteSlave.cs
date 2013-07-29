@@ -87,6 +87,12 @@ namespace Dynamight.RemoteSlave
             }
         }
 
+        public static IEnumerable<Commands> Split(Commands commands)
+        {
+            var all = (Commands[])Enum.GetValues(typeof(Commands));
+            return all.Where(c => (c & commands) == c);
+        }
+
         static bool IsDepthCommand(Commands command)
         {
             if ((Commands.Depth80 & command) == Commands.Depth80
@@ -154,6 +160,32 @@ namespace Dynamight.RemoteSlave
             return output;
         }
 
+        static void SendDepth(KinectSensor sensor, NetworkStream[] streams, Commands command)
+        {
+            using (var frame = sensor.DepthStream.OpenNextFrame(50))
+            {
+                if (frame == null)
+                    return;
+                var dc = GetDepthCommand(command);
+                if (!dc.HasValue)
+                    return;
+                byte[] pixelData = new byte[frame.PixelDataLength * frame.BytesPerPixel];
+                unsafe
+                {
+                    fixed (byte* p = pixelData)
+                    {
+                        IntPtr ptr = (IntPtr)p;
+                        frame.CopyPixelDataTo((IntPtr)ptr, frame.PixelDataLength);
+                    }
+                }
+                foreach (var stream in streams)
+                {
+                    stream.Write(ToBytes(dc.Value), 0, sizeof(Commands));
+                    stream.Write(pixelData, 0, pixelData.Length);
+                }
+            }
+        }
+
         static void SendDepth(UdpClient client, DepthImageStream stream, Commands command, IPEndPoint destination)
         {
             using (var frame = stream.OpenNextFrame(50))
@@ -176,6 +208,27 @@ namespace Dynamight.RemoteSlave
                     }
                 }
                 Send(client, pixelData, destination);
+            }
+        }
+
+        static void SendColor(KinectSensor sensor, NetworkStream[] streams, Commands command)
+        {
+            using (var frame = sensor.ColorStream.OpenNextFrame(50))
+            {
+                if (frame == null)
+                    return;
+
+                var cc = GetColorCommand(command);
+                if (!cc.HasValue)
+                    return;
+
+                byte[] pixelData = new byte[frame.PixelDataLength];
+                frame.CopyPixelDataTo(pixelData);
+                foreach (var stream in streams)
+                {
+                    stream.Write(ToBytes(cc.Value), 0, sizeof(int));
+                    stream.Write(pixelData, 0, pixelData.Length);
+                }
             }
         }
 
@@ -202,6 +255,36 @@ namespace Dynamight.RemoteSlave
             for (var i = 0; i < data.Length; i += bufferSize)
             {
                 client.Send(data.Skip(i).Take(bufferSize).ToArray(), Math.Min(data.Length - i, bufferSize), destination);
+            }
+        }
+
+        static void SendSkeleton(KinectSensor sensor, NetworkStream[] streams, Commands command)
+        {
+            using (var frame = sensor.SkeletonStream.OpenNextFrame(50))
+            {
+                if (frame == null)
+                    return;
+
+                var sc = GetSkeletonCommand(command);
+                if (!sc.HasValue)
+                    return;
+
+                Skeleton[] data = new Skeleton[frame.SkeletonArrayLength];
+                frame.CopySkeletonDataTo(data);
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    formatter.Serialize(ms, data);
+                    var toSend = ms.ToArray();
+                    foreach (var stream in streams)
+                    {
+                        stream.Write(ToBytes(sc.Value), 0, sizeof(Commands));
+                        stream.Write(toSend, 0, toSend.Length);
+                        var empty = new byte[Math.Max(SKELETON_BUFFER_LENGTH - toSend.Length, 0)];
+                        if (empty.Length > 0)
+                            stream.Write(empty, 0, empty.Length);
+                    }
+                }
             }
         }
 
@@ -249,7 +332,77 @@ namespace Dynamight.RemoteSlave
             }
         }
 
+        static void HandleDepthStreams(RemoteTCPSlave tcp, KinectSensor sensor)
+        {
+
+            NetworkStream[] streams = tcp[Commands.Depth80];
+            Commands command = Commands.Depth80;
+            if (streams.Length == 0)
+            {
+                streams = tcp[Commands.Depth320];
+                if (streams.Length == 0)
+                {
+                    streams = tcp[Commands.Depth640];
+                    if (streams.Length == 0)
+                        return;
+                    else
+                        command = Commands.Depth640;
+                }
+                else
+                    command = Commands.Depth320;
+            }
+            Enable(sensor, command);
+            SendDepth(sensor, streams, command);
+        }
+
+        static void HandleColorStreams(RemoteTCPSlave tcp, KinectSensor sensor)
+        {
+            NetworkStream[] streams = tcp[Commands.Color640];
+            Commands command = Commands.Color640;
+            if (streams.Length == 0)
+            {
+                streams = tcp[Commands.Color1280];
+                if (streams.Length == 0)
+                {
+                    return;
+                }
+                else
+                    command = Commands.Color1280;
+            }
+            Enable(sensor, command);
+            SendColor(sensor, streams, command);
+        }
+
+        static void HandleSkeletonStreams(RemoteTCPSlave tcp, KinectSensor sensor)
+        {
+            var streams = tcp[Commands.Skeleton];
+            if (streams.Length == 0)
+                return;
+            Enable(sensor, Commands.Skeleton);
+            SendSkeleton(sensor, streams, Commands.Skeleton);
+        }
+
         static void Main(string[] args)
+        {
+            int commandPort = args.Length > 0 ? int.Parse(args.First()) : 10500;
+            RemoteTCPSlave tcp = new RemoteTCPSlave(commandPort);
+            CancellationTokenSource ender = new CancellationTokenSource();
+            tcp.Start(ender.Token);
+            Console.WriteLine("Ctrl-C to exit!");
+            Console.CancelKeyPress += (o, e) =>
+            {
+                ender.Cancel();
+            };
+            KinectSensor sensor = KinectSensor.KinectSensors.First(s => s.Status == KinectStatus.Connected);
+            while (!ender.IsCancellationRequested)
+            {
+                HandleDepthStreams(tcp, sensor);
+                HandleColorStreams(tcp, sensor);
+                HandleSkeletonStreams(tcp, sensor);
+            }
+        }
+
+        static void Main2(string[] args)
         {
             int commandPort = args.Length > 0 ? int.Parse(args.First()) : 10500;
             CancellationTokenSource ender = new CancellationTokenSource();
