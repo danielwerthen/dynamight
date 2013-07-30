@@ -120,11 +120,13 @@ void main(void)
         public Action<Vector3, bool>[] CreateRenderables(int count)
         {
             var ids = Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(count);
-            renderer.Load(objects = ids.Select(_ => new Renderable()
+            objects = ids.Select(_ => new Renderable()
             {
                 Shape = new Quad(new Vector3(0, 0.0f, 0f), 0.25f, defaultE1, defaultE2, (v) => textures.Transform(v, 0)),
                 Animatable = translator = new Translator() // new RadialSpin(new Vector3(0.2f,0,0))
-            }).ToArray());
+            }).ToArray();
+            renderer = new Renderer(null, objects);
+            renderer.Load();
             renderer.Start();
             return ids.Select(i =>
             {

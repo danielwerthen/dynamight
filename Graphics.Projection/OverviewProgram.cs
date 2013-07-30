@@ -18,7 +18,7 @@ namespace Graphics.Projection
         /// <summary>
         /// Current camera position.
         /// </summary>
-        private Vector3 eye = new Vector3(0.0f, 0.0f, -3.0f);
+        private Vector3 eye = new Vector3(0.0f, 0.0f, -8.0f);
 
         private Vector2 camRot = new Vector2(0.0f, -0.25f);
 
@@ -48,7 +48,8 @@ namespace Graphics.Projection
         private float near = 0.1f;
 
         private Size windowSize;
-        private Renderer renderer;
+        private Renderer staticRenderer;
+        private Renderer dynamicRenderer;
         private MultipleTextures textures;
 
         const string VSLighting = @"
@@ -122,18 +123,9 @@ void main(void)
             GL.DeleteShader(fs);
 
             textures = new MultipleTextures(this);
-            Bitmap grid = new Bitmap(101, 101);
-            QuickDraw.Start(grid)
-                .All((x, y) =>
-                {
-                    var lpp = 10;
-                    var xm = x % lpp;
-                    var ym = y % lpp;
-                    //if ((xm <= 1 || xm >= lpp - 1) || (ym <= 1 || ym >= lpp - 1))
-                    if (xm == 0 || ym == 0)
-                        return Color.Gray;
-                    return Color.FromArgb(0, 0, 0, 0);
-                }, false).Finish();
+            Bitmap white = new Bitmap(101, 101);
+            QuickDraw.Start(white)
+                .Fill(Color.White).Finish();
             Bitmap gridBot = new Bitmap(101, 101);
             QuickDraw.Start(gridBot)
                 .All((x, y) =>
@@ -146,20 +138,33 @@ void main(void)
                     return Color.FromArgb(150, 50, 50, 50);
                 }, false).Finish();
             Bitmap[] maps = new Bitmap[] {
-                gridBot, grid
+                white, gridBot
             };
             textures.Load(maps);
-            renderer = new Renderer();
-            renderer.Load(new Renderable[] {
+            
+            dynamicRenderer = new Renderer(new DynamicRenderable[] {
+                new DynamicRenderable() {
+                    Vertices = new DynamicVertex[] {
+                        new DynamicVertex(new Vector3(0,0,0)),
+                        new DynamicVertex(new Vector3(1,0,0)),
+                        new DynamicVertex(new Vector3(0,1,0)),
+                        new DynamicVertex(new Vector3(0,0,1)),
+                    }
+                }
+            });
+            staticRenderer = new Renderer(null, new Renderable[] {
                 new Renderable() {
-                    Shape = new Quad(new Vector3(0,0,0), 2, new Vector3(1,0,0), new Vector3(0,0,1), (v) => textures.Transform(v, 0)),
+                    Shape = new Quad(new Vector3(0,0,0), 10, new Vector3(1,0,0), new Vector3(0,0,1), (v) => textures.Transform(v, 1)),
                     Animatable = new Translator()
                 },
             });
             windowSize = parent.Size;
             SetupCamera();
 
-            renderer.Start();
+            staticRenderer.Load();
+            dynamicRenderer.Load();
+            staticRenderer.Start();
+            dynamicRenderer.Start();
 
             keyl = new KeyboardListener(parent.Keyboard);
 
@@ -190,7 +195,9 @@ void main(void)
                              ClearBufferMask.DepthBufferBit);
             GL.UseProgram(program);
             GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
-            renderer.Render();
+            staticRenderer.Render();
+
+            dynamicRenderer.Render();
         }
     }
 }

@@ -11,9 +11,13 @@ namespace Graphics.Projection
 {
     public class Renderer
     {
-        public Renderer()
+        public Renderer(DynamicRenderable[] dynamics = null, Renderable[] renderables = null)
         {
             watch = new Stopwatch();
+            if (dynamics != null)
+                _dynamics = dynamics;
+            if (renderables != null)
+                _renderables = renderables;
         }
 
         struct Buffers
@@ -25,13 +29,21 @@ namespace Graphics.Projection
             public int tex_buffer_object;
         }
 
-        Renderable[] renderables;
+        Renderable[] _renderables = new Renderable[0];
         Buffers[] buffers;
+        private DynamicRenderable[] _dynamics = new DynamicRenderable[0];
 
-        public void Load(Renderable[] renderables)
+        public void Load()
         {
-            this.renderables = renderables;
-            this.buffers = renderables.Select(r => Load(r)).ToArray();
+            this.buffers = _renderables.Select(r => Load(r)).ToArray();
+            foreach (var dyn in _dynamics)
+                dyn.Load();
+            if (_dynamics.Length > 0)
+            {
+                GL.PointSize(5f);
+                GL.Enable(EnableCap.PointSmooth);
+                GL.Hint(HintTarget.PointSmoothHint, HintMode.Nicest);
+            }
         }
 
         Stopwatch watch;
@@ -63,9 +75,9 @@ namespace Graphics.Projection
             GL.EnableClientState(ArrayCap.NormalArray);
             GL.EnableClientState(ArrayCap.TextureCoordArray);
 
-            for (int i = 0; i < renderables.Length; i++)
+            for (int i = 0; i < _renderables.Length; i++)
             {
-                var renderable = renderables[i];
+                var renderable = _renderables[i];
                 if (!renderable.Visible)
                     continue;
                 var buf = buffers[i];
@@ -90,6 +102,9 @@ namespace Graphics.Projection
                     DrawElementsType.UnsignedInt, IntPtr.Zero);
             }
 
+            foreach (var dyn in _dynamics)
+                dyn.Render();
+
             GL.DisableClientState(ArrayCap.VertexArray);
             GL.DisableClientState(ArrayCap.ColorArray);
             GL.DisableClientState(ArrayCap.NormalArray);
@@ -100,6 +115,8 @@ namespace Graphics.Projection
         {
             foreach (var buf in buffers)
                 Unload(buf);
+            foreach (var dyn in _dynamics)
+                dyn.Unload();
         }
 
         void Unload(Buffers buf)
