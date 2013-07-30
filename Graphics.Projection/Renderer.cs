@@ -100,6 +100,9 @@ namespace Graphics.Projection
                 GL.BindBuffer(BufferTarget.ElementArrayBuffer, buf.element_buffer_object);
                 GL.DrawElements(BeginMode.Triangles, renderable.Shape.Indices.Length,
                     DrawElementsType.UnsignedInt, IntPtr.Zero);
+
+                GL.MatrixMode(MatrixMode.Modelview);
+                GL.LoadIdentity();
             }
 
             foreach (var dyn in _dynamics)

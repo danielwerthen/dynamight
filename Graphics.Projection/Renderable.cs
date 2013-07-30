@@ -19,7 +19,7 @@ namespace Graphics.Projection
         public Animatable Animatable { get; set; }
         
         private bool _visible = true;
-        public bool Visible
+        public virtual bool Visible
         {
             get { return _visible; }
             set { _visible = value; }
@@ -38,9 +38,9 @@ namespace Graphics.Projection
 
         public DynamicVertex(Vector3 v)
         {
-            R = 255;
-            B = 255;
-            G = 255;
+            R = 150;
+            B = 150;
+            G = 150;
             A = 255;
             Normal = new Vector3(0, 0, 1);
             TexCoord = new Vector2(0.25f, 0.25f);
@@ -53,6 +53,11 @@ namespace Graphics.Projection
         public DynamicVertex[] Vertices { get; set; }
         int VBOHandle;
 
+        public DynamicRenderable()
+        {
+            Vertices = new DynamicVertex[0];
+        }
+
         public void Load()
         {
             GL.GenBuffers(1, out VBOHandle);
@@ -60,7 +65,8 @@ namespace Graphics.Projection
 
         public void Unload()
         {
-            GL.DeleteBuffers(1, ref VBOHandle);
+            if (VBOHandle != 0)
+                GL.DeleteBuffers(1, ref VBOHandle);
         }
 
         private void SetupBuffer()

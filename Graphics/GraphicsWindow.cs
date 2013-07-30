@@ -115,29 +115,39 @@ namespace Graphics
 		public int CreateShader(ShaderType type, string shader)
 		{
 			MakeCurrent();
-			int ptr = GL.CreateShader(type);
-			GL.ShaderSource(ptr, shader);
-			GL.CompileShader(ptr);
-
-			string LogInfo;
-			GL.GetShaderInfoLog(ptr, out LogInfo);
-			if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
-				throw new Exception(LogInfo);
-			return ptr;
+            return CreateShader2(type, shader);
 		}
+
+        public static int CreateShader2(ShaderType type, string shader)
+        {
+            int ptr = GL.CreateShader(type);
+            GL.ShaderSource(ptr, shader);
+            GL.CompileShader(ptr);
+
+            string LogInfo;
+            GL.GetShaderInfoLog(ptr, out LogInfo);
+            if (LogInfo.Length > 0 && !LogInfo.Contains("hardware"))
+                throw new Exception(LogInfo);
+            return ptr;
+        }
 
 		public int CreateProgram(int vs, int fs, int? gs = null)
 		{
 			MakeCurrent();
-			int ptr = GL.CreateProgram();
-			GL.AttachShader(ptr, vs);
-			GL.AttachShader(ptr, fs);
+            return CreateProgram2(vs, fs, gs);
+		}
+
+        public static int CreateProgram2(int vs, int fs, int? gs = null)
+        {
+            int ptr = GL.CreateProgram();
+            GL.AttachShader(ptr, vs);
+            GL.AttachShader(ptr, fs);
             if (gs.HasValue)
                 GL.AttachShader(ptr, gs.Value);
-			GL.LinkProgram(ptr);
-			
-			return ptr;
-		}
+            GL.LinkProgram(ptr);
+
+            return ptr;
+        }
 
 		public void UpdateTexture(Bitmap bitmap, int texture)
 		{

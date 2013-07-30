@@ -1,7 +1,9 @@
 ﻿using Graphics.Geometry;
 using Graphics.Input;
+using Graphics.Projection.Lights;
 using Graphics.Textures;
 using OpenTK;
+using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Input;
 using System;
@@ -50,6 +52,7 @@ namespace Graphics.Projection
         private Size windowSize;
         private Renderer staticRenderer;
         private Renderer dynamicRenderer;
+        private GLSLPointCloudProgram dynamicProgram = new GLSLPointCloudProgram(false);
         private MultipleTextures textures;
 
         const string VSLighting = @"
@@ -107,6 +110,14 @@ void main(void)
         }
 
         int program;
+        Renderable Grid;
+        Renderable[] LightsObjects;
+        DynamicRenderable[] dynamics;
+        public void SetPointCloud(int i, DynamicVertex[] vertices)
+        {
+            dynamics[i].Vertices = vertices;
+        }
+
         public override void Load(ProgramWindow parent)
         {
             parent.MakeCurrent();
@@ -121,6 +132,7 @@ void main(void)
             program = parent.CreateProgram(vs, fs);
             GL.DeleteShader(vs);
             GL.DeleteShader(fs);
+            dynamicProgram.Load();
 
             textures = new MultipleTextures(this);
             Bitmap white = new Bitmap(101, 101);
@@ -141,23 +153,29 @@ void main(void)
                 white, gridBot
             };
             textures.Load(maps);
-            
-            dynamicRenderer = new Renderer(new DynamicRenderable[] {
-                new DynamicRenderable() {
-                    Vertices = new DynamicVertex[] {
-                        new DynamicVertex(new Vector3(0,0,0)),
-                        new DynamicVertex(new Vector3(1,0,0)),
-                        new DynamicVertex(new Vector3(0,1,0)),
-                        new DynamicVertex(new Vector3(0,0,1)),
-                    }
-                }
-            });
-            staticRenderer = new Renderer(null, new Renderable[] {
-                new Renderable() {
+
+            lights = (Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(8)).Select(_ => new LightSourceParameters()).ToArray();
+
+            var xs = Dynamight.ImageProcessing.CameraCalibration.Range.OfDoubles(2, -2, 0.1f);
+            //dynamicRenderer = new Renderer(new DynamicRenderable[] {
+            //    new DynamicRenderable() {
+            //        Vertices = xs.SelectMany(x => xs.Select(y => new DynamicVertex(new Vector3((float)x, (float)y, 0)))).ToArray()
+            //        //Vertices = new DynamicVertex[] {
+            //        //    new DynamicVertex(new Vector3(0,0,0)),
+            //        //    new DynamicVertex(new Vector3(1,0,0)),
+            //        //    new DynamicVertex(new Vector3(0,1,0)),
+            //        //    new DynamicVertex(new Vector3(0,0,1)),
+            //        //}
+            //    }
+            //});
+            dynamicRenderer = new Renderer(dynamics = (Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(6)).Select(_ => new DynamicRenderable()).ToArray());
+            staticRenderer = new Renderer(null, (new Renderable[] {
+                Grid = new Renderable() {
+                    Visible = false,
                     Shape = new Quad(new Vector3(0,0,0), 10, new Vector3(1,0,0), new Vector3(0,0,1), (v) => textures.Transform(v, 1)),
                     Animatable = new Translator()
                 },
-            });
+            }).Concat(LightsObjects = lights.Select(l => new LightRenderable(l, (v) => textures.Transform(v, 0))).ToArray()).ToArray());
             windowSize = parent.Size;
             SetupCamera();
 
@@ -168,22 +186,95 @@ void main(void)
 
             keyl = new KeyboardListener(parent.Keyboard);
 
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Right, Key.Left, null, (f) => camRot.X += f);
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, null, (f) => camRot.Y += f);
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft }, (f) => eye.Z += f);
+            keyl.AddAction(() => Selection = (Selection == 0 ? null : (int?)0), Key.F1);
+            keyl.AddAction(() => Selection = (Selection == 1 ? null : (int?)1), Key.F2);
+            keyl.AddAction(() => Selection = (Selection == 2 ? null : (int?)2), Key.F3);
+            keyl.AddAction(() => Selection = (Selection == 3 ? null : (int?)3), Key.F4);
+            keyl.AddAction(() => Selection = (Selection == 4 ? null : (int?)4), Key.F5);
+            keyl.AddAction(() => Selection = (Selection == 5 ? null : (int?)5), Key.F6);
+            keyl.AddAction(() => Selection = (Selection == 6 ? null : (int?)6), Key.F7);
+            keyl.AddAction(() => Selection = (Selection == 7 ? null : (int?)7), Key.F8);
 
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Right, Key.Left, new Key[] { Key.ControlLeft }, (f) => camRot.X += f);
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ControlLeft }, (f) => camRot.Y += f);
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft, Key.ControlLeft }, (f) => eye.Z += f);
+            keyl.AddAction(Activate, Key.A);
+            keyl.AddAction(() => Grid.Visible = !Grid.Visible, Key.G);
+
+            keyl.AddBinaryAction(0.01f, -0.01f, Key.Right, Key.Left, null, (f) => MoveX(f));
+            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, null, (f) => MoveY(f));
+            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft }, (f) => MoveZ(f));
+
+            keyl.AddBinaryAction(0.05f, -0.05f, Key.Right, Key.Left, new Key[] { Key.ControlLeft }, (f) => MoveX(f));
+            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ControlLeft }, (f) => MoveY(f));
+            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft, Key.ControlLeft }, (f) => MoveZ(f));
+
+
+            GL.Enable(EnableCap.Lighting);
+            GL.Enable(EnableCap.Light0);
+            GL.Enable(EnableCap.Light1);
+            GL.Enable(EnableCap.Light2);
+            GL.Enable(EnableCap.Light3);
+            GL.Enable(EnableCap.Light4);
+            GL.Enable(EnableCap.Light5);
+            GL.Enable(EnableCap.Light6);
+            GL.Enable(EnableCap.Light7);
+
+            lights[0].InUse = true;
+        }
+        int? Selection = null;
+
+        private void Activate()
+        {
+            if (Selection == null)
+                return;
+            else
+            {
+                var l = lights[Selection.Value];
+                l.InUse = !l.InUse;
+            }
+        }
+
+        private void MoveX(float f)
+        {
+            if (Selection == null)
+                camRot.X += f;
+            else
+            {
+                var l = lights[Selection.Value];
+                l.Position.X += f;
+            }
+        }
+
+        private void MoveY(float f)
+        {
+            if (Selection == null)
+                camRot.Y += f;
+            else
+            {
+                var l = lights[Selection.Value];
+                l.Position.Y += f;
+            }
+        }
+
+        private void MoveZ(float f)
+        {
+            if (Selection == null)
+                eye.Z += f;
+            else
+            {
+                var l = lights[Selection.Value];
+                l.Position.Z += f;
+            }
         }
 
         KeyboardListener keyl;
+
+        LightSourceParameters[] lights;
         public override void Unload()
         {
             base.Unload();
             parent.MakeCurrent();
             if (program != 0)
                 GL.DeleteProgram(program);
+            dynamicProgram.Unload();
         }
 
         public override void Render()
@@ -197,6 +288,13 @@ void main(void)
             GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
             staticRenderer.Render();
 
+            dynamicProgram.Activate();
+            int c = 0;
+            var lids = lights.Where(l => l.InUse).Select(_ => c++).ToArray();
+            if (c > 0)
+                c.ToString();
+            lids.Zip(lights.Where(l => l.InUse), (i, l) => l.Set(i)).ToArray();
+            dynamicProgram.Setup(c);
             dynamicRenderer.Render();
         }
     }

@@ -34,7 +34,7 @@ namespace Dynamight.App
             },
             new ProgramCommand() {
                 Names = new string[] { "overview", "o" }, 
-                Parameters = new string[] { },
+                Parameters = new string[] { "camcalibfile" },
                 Run = OverviewApp.Run
             },
             new ProgramCommand() {
