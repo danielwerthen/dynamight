@@ -62,10 +62,10 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             EXTRA = K2G * IR2RGB * flip;
         }
 
-        public float[] ToGlobal(KinectSensor sensor, SkeletonPoint point)
+        public float[] ToGlobal(KinectSensor sensor, SkeletonPoint point, float offset = 0)
         {
             var cp = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
-            var iext = calib.InverseExtrinsic(point.Z);
+            var iext = calib.InverseExtrinsic(point.Z + offset);
             return calib.InverseTransform(new System.Drawing.PointF(1280 - cp.X, cp.Y), iext);
         }
 

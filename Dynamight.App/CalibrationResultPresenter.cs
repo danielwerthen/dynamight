@@ -32,7 +32,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
             var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
-            var display = new BitmapWindow(main.Bounds.Left + 50, 50, 1280, 960);
+            var display = new BitmapWindow(main.Bounds.Left + main.Bounds.Width / 2 + 50, 50, 640, 480);
             display.Load();
             display.ResizeGraphics();
 
@@ -51,7 +51,7 @@ namespace Dynamight.App
             }).Finish();
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
-            Camera cam = new Camera(sensor, ColorImageFormat.RgbResolution1280x960Fps12);
+            Camera cam = new Camera(sensor, ColorImageFormat.RgbResolution640x480Fps30);
             var format = DepthImageFormat.Resolution80x60Fps30;
             DepthCamera depthCam = new DepthCamera(sensor, format);
             SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
@@ -61,7 +61,7 @@ namespace Dynamight.App
             sensor.SkeletonStream.Enable();
             program.SetProjection(pc, null); //kc.GetModelView());
 
-
+            float offset = -2;
 
             while (true)
             {
@@ -69,19 +69,20 @@ namespace Dynamight.App
                 if (players == null)
                     continue;
                 var joints = players.Where(p => p.Skeleton != null).SelectMany(s => s.Skeleton.Joints);
-                var globals = joints.Select(j => kc.ToGlobal(sensor, j.Position)).ToArray();
+                var globals = joints.Select(j => kc.ToGlobal(sensor, j.Position, offset)).ToArray();
+                
                 var points = globals.Select(p => new Vector3(p[0], p[1], p[2])).ToArray();
                 if (points.Length > 0)
                     points.ToString();
                 program.SetPositions(points);
                 window.RenderFrame();
-                window.ProcessEvents();
+                display.ProcessEvents();
                 var pic = cam.TakePicture(0);
                 if (globals.Length > 0)
                 {
-                    var cpoints = cc.Transform(joints.Select(j => kc.ToGlobal(sensor, j.Position)).ToArray());
-                    QuickDraw.Start(pic).Color(Color.Green).DrawPoint(cpoints, 15).Finish();
-                    var tp = joints.Select(j => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(j.Position, ColorImageFormat.RgbResolution1280x960Fps12))
+                    //var cpoints = cc.Transform(joints.Select(j => kc.ToGlobal(sensor, j.Position)).ToArray());
+                    //QuickDraw.Start(pic).Color(Color.Green).DrawPoint(cpoints, 15).Finish();
+                    var tp = joints.Select(j => sensor.CoordinateMapper.MapSkeletonPointToColorPoint(j.Position, ColorImageFormat.RgbResolution640x480Fps30))
                         .Select(cp => new PointF(cp.X, cp.Y)).ToArray();
                     pic.RotateFlip(RotateFlipType.RotateNoneFlipX);
                     QuickDraw.Start(pic).Color(Color.Red).DrawPoint(tp, 5).Finish();
