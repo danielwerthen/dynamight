@@ -12,16 +12,16 @@ using System.Xml.Serialization;
 
 namespace KinectOutput
 {
+
+    public class Transformer
+    {
+        public CalibrationResult Data { get; set; }
+        public Func<double[], double[]> Transform { get; set; }
+        public Func<double[], double[]> Inverse { get; set; }
+    }
     public class Coordinator
     {
         private static Dictionary<string, Transformer> results = new Dictionary<string, Transformer>();
-
-        private class Transformer
-        {
-            public CalibrationResult Data { get; set; }
-            public Func<double[], double[]> Transform { get; set; }
-            public Func<double[], double[]> Inverse { get; set; }
-        }
 
         private static string IdToFileName(string id)
         {
@@ -77,10 +77,10 @@ namespace KinectOutput
             SaveResult(id, result);
             _setResult(id, result);
         }
-        public static void _setResult(string id, CalibrationResult result)
+        public static Transformer GetInverse(CalibrationResult result)
         {
             if (result.P0 == null || result.F1 == null || result.F2 == null || result.F3 == null)
-                return;
+                return null;
             var mat = DenseMatrix.OfColumns(4, 4, new double[][] { result.F1.Concat(new double[] {0}).ToArray(),
                 result.F2.Concat(new double[] {0}).ToArray(),
                 result.F3.Concat(new double[] {0}).ToArray(),
@@ -88,11 +88,11 @@ namespace KinectOutput
 
             if (result.A1 != null && result.A2 != null && result.A3 != null)
             {
-                var matA = DenseMatrix.OfColumns(4,4, new double[][] { result.A1.ToArray(), result.A2.ToArray(), result.A3.ToArray(), new double[4] { 0, 0, 0, 1} });
+                var matA = DenseMatrix.OfColumns(4, 4, new double[][] { result.A1.ToArray(), result.A2.ToArray(), result.A3.ToArray(), new double[4] { 0, 0, 0, 1 } });
                 mat = matA * mat;
             }
             var inv = mat.Inverse();
-            results[id] = new Transformer()
+            return new Transformer()
             {
                 Data = result,
                 Transform = (v) =>
@@ -110,6 +110,10 @@ namespace KinectOutput
                         return mat.Multiply(DenseVector.OfEnumerable(v)).ToArray();
                 }
             };
+        }
+        public static void _setResult(string id, CalibrationResult result)
+        {
+            results[id] = GetInverse(result);
         }
 
         private static Func<double[], double[]> Identity = (v) => v;

@@ -32,13 +32,21 @@ namespace Dynamight.App
             overview.ResizeGraphics();
             OverviewProgram program = new OverviewProgram();
             overview.SetProgram(program);
-            KinectSensor sensor = KinectSensor.KinectSensors.First();
-            var format = DepthImageFormat.Resolution80x60Fps30;
-            DepthCamera depthCam = new DepthCamera(sensor, format);
-            SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
-            TriplexCamera triplex = new TriplexCamera(sensor, depthCam, skeletonCam);
-            KinectCalibrator kc = new KinectCalibrator(sensor, cc);
-            sensor.Start();
+            RemoteKinect kinect = new RemoteKinect("localhost", 10500);
+            IDepthCamera depth = new RemoteDepthCamera(kinect);
+            ISkeletonCamera skeleton = new RemoteSkeletonCamera(kinect);
+            kinect.Start(Commands.Depth80 | Commands.Skeleton);
+            TriplexCamera triplex = new TriplexCamera(depth, skeleton);
+            KinectCalibrator kc = new KinectCalibrator(cc);
+            var coordinateMapper = KinectSensor.KinectSensors.First().CoordinateMapper;
+
+            //KinectSensor sensor = KinectSensor.KinectSensors.First();
+            //var format = DepthImageFormat.Resolution80x60Fps30;
+            //DepthCamera depthCam = new DepthCamera(sensor, format);
+            //SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
+            //TriplexCamera triplex = new TriplexCamera(depthCam, skeletonCam);
+            //KinectCalibrator kc = new KinectCalibrator(sensor, cc);
+            //sensor.Start();
 
 
             while (true)
@@ -50,7 +58,7 @@ namespace Dynamight.App
                     {
                         program.SetPointCloud(i, players[i].DepthPoints.Select(dp =>
                         {
-                            var sp = sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, dp);
+                            var sp = coordinateMapper.MapDepthPointToSkeletonPoint(DepthImageFormat.Resolution80x60Fps30, dp);
                             var gp = kc.ToGlobal(sp);
                             return new DynamicVertex(new Vector3(gp[0], gp[1], gp[2]));
                         }).ToArray());

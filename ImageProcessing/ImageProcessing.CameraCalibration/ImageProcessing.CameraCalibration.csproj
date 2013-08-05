@@ -153,6 +153,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Dynamight.RemoteSlave\Dynamight.RemoteSlave.csproj">
+      <Project>{854e15c5-3fde-49e5-b5bb-f8764d0ff0d6}</Project>
+      <Name>Dynamight.RemoteSlave</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Graphics\Graphics.csproj">
       <Project>{269d3c4a-94e0-48cb-a31e-f8e3f8e27502}</Project>
       <Name>Graphics</Name>

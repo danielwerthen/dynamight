@@ -13,7 +13,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration
     public class KinectCalibrator
     {
         CalibrationResult calib;
-        KinectSensor sensor;
         Matrix<float> IR2RGB;
         public Matrix<float> K2G;
         Matrix<float> EXTRA;
@@ -28,10 +27,9 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 rt[0, 3], rt[1, 3], rt[2, 3], rt[3, 3]);
         }
 
-        public KinectCalibrator(KinectSensor sensor, CalibrationResult calib)
+        public KinectCalibrator(CalibrationResult calib)
         {
             this.calib = calib;
-            this.sensor = sensor;
 
             var ir2rgbExtrin = new CV.ExtrinsicCameraParameters(
               new CV.RotationVector3D(new double[] { 0.56 * Math.PI / 180.0, 0.07 * Math.PI / 180.0, +0.05 * Math.PI / 180.0 }),
@@ -64,6 +62,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             EXTRA = K2G * IR2RGB * flip;
         }
 
+        public float[] ToGlobal(KinectSensor sensor, SkeletonPoint point)
+        {
+            var cp = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
+            var iext = calib.InverseExtrinsic(point.Z);
+            return calib.InverseTransform(new System.Drawing.PointF(1280 - cp.X, cp.Y), iext);
+        }
+
         public float[] ToGlobal(SkeletonPoint point)
         {
             
@@ -71,12 +76,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             //var tdepth = K2G.Multiply(IR2RGB.Multiply(IR2RGB.Multiply(depth)));
             var tdepth = EXTRA.Multiply(depth);
             return tdepth.ToArray();
-            var colorPoint = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
-            var cpp = new System.Drawing.PointF(1280 - colorPoint.X, colorPoint.Y);
-            var irt = calib.InverseExtrinsic(tdepth[2] / tdepth[3]);
-            var it = calib.InverseTransform(cpp, irt);
-
-            return EXTRA.Multiply(new DenseVector(it.Concat(new float[] {1}).ToArray())).ToArray();
         }
 
         public float[] ToGlobal(Joint joint)

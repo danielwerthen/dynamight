@@ -29,7 +29,7 @@ namespace Dynamight.App
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             
             sensor.SkeletonStream.Enable();
-            KinectCalibrator kc = new KinectCalibrator(sensor, cc);
+            KinectCalibrator kc = new KinectCalibrator(cc);
             sensor.Start();
 
             while (true)

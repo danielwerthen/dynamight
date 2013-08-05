@@ -60,8 +60,6 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             {
                 var token = cancellation.Token;
                 sensor.ColorStream.Enable(imageFormat);
-                if (!sensor.IsRunning)
-                    sensor.Start();
                 EventHandler<ColorImageFrameReadyEventArgs> onFrame = (o, e) =>
                     {
                         var frame = HandleFrame(e);

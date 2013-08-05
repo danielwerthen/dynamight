@@ -52,8 +52,8 @@ namespace Dynamight.App
             var format = DepthImageFormat.Resolution80x60Fps30;
             DepthCamera depthCam = new DepthCamera(sensor, format);
             SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
-            TriplexCamera triplex = new TriplexCamera(sensor, depthCam, skeletonCam);
-            KinectCalibrator kc = new KinectCalibrator(sensor, cc);
+            TriplexCamera triplex = new TriplexCamera(depthCam, skeletonCam);
+            KinectCalibrator kc = new KinectCalibrator(cc);
             sensor.Start();
             sensor.SkeletonStream.Enable();
             program.SetProjection(pc, kc.GetModelView());

@@ -18,7 +18,7 @@ namespace Graphics
         int Bpp;
         System.Drawing.Imaging.PixelFormat format;
 		private QuickDraw(Bitmap bitmap)
-		{
+		{       
 			fast = new FastBitmap(bitmap);
 			width = bitmap.Width;
 			height = bitmap.Height;
@@ -153,6 +153,12 @@ namespace Graphics
 	{
 		public static IEnumerable<Point> FromRadius(double x, double y, double size)
 		{
+            if (double.IsNaN(y) || double.IsNaN(x))
+                yield break;
+            if (double.IsInfinity(y) || double.IsInfinity(x))
+                yield break;
+            if (x < int.MinValue + 1000 || x > int.MaxValue - 1000 || y < int.MinValue + 1000 || y > int.MaxValue - 1000)
+                yield break;
 			for (int dy = Convert.ToInt32(y - size); dy < Convert.ToInt32(y + size); dy++)
 				for (int dx = Convert.ToInt32(x - size); dx < Convert.ToInt32(x + size); dx++)
 					if (Math.Sqrt(((x - dx) * (x - dx)) + ((y - dy) * (y - dy))) < size)

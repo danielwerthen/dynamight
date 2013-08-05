@@ -28,6 +28,21 @@ namespace Dynamight.App
                 Run = ExtrinsicCalibration.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "pictureGrabber", "pg" }, 
+                Parameters = new string[] { "folder" },
+                Run = PictureGrabber.Run
+            },
+            new ProgramCommand() {
+                Names = new string[] { "pictureCalibrator", "pc" }, 
+                Parameters = new string[] { "precalib" },
+                Run = PictureCalibrator.Run
+            },
+            new ProgramCommand() {
+                Names = new string[] { "calibrationResultPresenter", "crp" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = CalibrationResultPresenter.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "remotekinect", "rk" }, 
                 Parameters = new string[] { },
                 Run = RemoteApp.Run

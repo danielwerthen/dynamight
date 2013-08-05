@@ -32,6 +32,26 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
     public class StereoCalibration
     {
+        public static Func<PointF[], PointF[]> FindHomography(PointF[] ccs, PointF[] pcs)
+        {
+            var hg = Emgu.CV.CameraCalibration.FindHomography(ccs, pcs, HOMOGRAPHY_METHOD.DEFAULT, 2);
+            var t = ccs.Select(c => new PointF(c.X, c.Y)).ToArray();
+            hg.ProjectPoints(t);
+            var tes = pcs.Zip(t, (a, b) => (b.X - a.X) * (b.X - a.X) + (b.Y - a.Y) * (b.Y - a.Y)).ToArray();
+            var sum = tes.Sum();
+            return (ps) =>
+            {
+                var psc = ps.Select(p => new PointF(p.X, p.Y)).ToArray();
+                hg.ProjectPoints(psc);
+                return psc;
+            };
+            
+        }
+
+        public static PointF[] Undistort(CalibrationResult calib, PointF[] points)
+        {
+            return calib.Intrinsic.Undistort(points, null, null);
+        }
 
         public static BitmapWindow DebugWindow { get; set; }
 
@@ -91,11 +111,16 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         public static CalibrationResult CalibrateCamera(PointF[][] cameraCorners, Camera camera, Size pattern, float checkerBoardSize)
         {
+            return CalibrateCamera(cameraCorners, camera.Size, pattern, checkerBoardSize);
+        }
+
+        public static CalibrationResult CalibrateCamera(PointF[][] cameraCorners, Size cameraSize, Size pattern, float checkerBoardSize)
+        {
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize, 0);
             var globalCorners = cameraCorners.Select(row => globals).ToArray();
             var intrinsic = new IntrinsicCameraParameters();
             ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, camera.Size, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, cameraSize, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
             var extrinsic = cameraExtrinsicsArray.First();
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }

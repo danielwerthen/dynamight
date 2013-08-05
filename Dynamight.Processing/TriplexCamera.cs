@@ -9,21 +9,13 @@ using System.Threading.Tasks;
 namespace Dynamight.Processing
 {
 
-    public struct DepthImageIndexedPoint
-    {
-        public DepthImagePoint Point;
-        public int Index;
-    }
-
     public class TriplexCamera
     {
-        KinectSensor sensor;
-        DepthCamera depth;
-        SkeletonCamera skeleton;
+        IDepthCamera depth;
+        ISkeletonCamera skeleton;
 
-        public TriplexCamera(KinectSensor sensor, DepthCamera depth, SkeletonCamera skeleton)
+        public TriplexCamera(IDepthCamera depth, ISkeletonCamera skeleton)
         {
-            this.sensor = sensor;
             this.depth = depth;
             this.skeleton = skeleton;
         }

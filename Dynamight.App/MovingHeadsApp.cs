@@ -39,7 +39,7 @@ namespace Dynamight.App
             var window = ProgramWindow.OpenOnSecondary();
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             SkeletonCamera skeletonCam = new SkeletonCamera(sensor);
-            KinectCalibrator kc = new KinectCalibrator(sensor, cc);
+            KinectCalibrator kc = new KinectCalibrator(cc);
             sensor.Start();
             var parameters = new TransformSmoothParameters
             {     

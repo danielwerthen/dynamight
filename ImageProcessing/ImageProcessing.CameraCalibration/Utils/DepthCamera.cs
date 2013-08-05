@@ -1,4 +1,5 @@
-﻿using Graphics;
+﻿using Dynamight.RemoteSlave;
+using Graphics;
 using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
@@ -9,7 +10,87 @@ using System.Threading.Tasks;
 
 namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 {
-    public class DepthCamera
+    public interface IDepthCamera
+    {
+        DepthImagePixel[] GetDepth(int wait, out Size? pixelSize);
+        IEnumerable<T> Get<T>(int wait, Func<DepthImagePixel, Point, Size, T> getter);
+        DepthImageIndexedPoint?[] Get(int wait);
+    }
+
+    public struct DepthImageIndexedPoint
+    {
+        public DepthImagePoint Point;
+        public int Index;
+    }
+
+    public class RemoteDepthCamera : IDepthCamera
+    {
+        RemoteKinect kinect;
+        private readonly object syncRoot = new object();
+        public RemoteDepthCamera(RemoteKinect kinect)
+        {
+            this.kinect = kinect;
+            kinect.ReceivedDepthImage += kinect_ReceivedDepthImage;
+        }
+
+        DepthImagePixel[] data;
+        Size pixelSize;
+        void kinect_ReceivedDepthImage(object sender, DepthImageEventArgs e)
+        {
+            lock (syncRoot)
+            {
+                data = e.Pixels;
+                if (e.Format == DepthImageFormat.Resolution320x240Fps30)
+                    pixelSize = new Size(320, 240);
+                else if (e.Format == DepthImageFormat.Resolution640x480Fps30)
+                    pixelSize = new Size(640, 480);
+                else
+                    pixelSize = new Size(80, 60);
+            }
+        }
+
+        public DepthImagePixel[] GetDepth(int wait, out Size? pixelSize)
+        {
+            lock (syncRoot)
+            {
+                pixelSize = this.pixelSize;
+                return data;
+            }
+        }
+
+        public DepthImageIndexedPoint?[] Get(int wait)
+        {
+            return Get(wait, (pixel, point, size) =>
+            {
+                if (!pixel.IsKnownDepth)
+                    return null;
+                var dip = new DepthImagePoint()
+                {
+                    X = point.X,
+                    Y = point.Y,
+                    Depth = pixel.Depth
+                };
+                return (DepthImageIndexedPoint?)new DepthImageIndexedPoint()
+                {
+                    Index = pixel.PlayerIndex,
+                    Point = dip
+                };
+            }).ToArray();
+        }
+
+        public IEnumerable<T> Get<T>(int wait, Func<DepthImagePixel, Point, Size, T> getter)
+        {
+            Size? size;
+            var data = GetDepth(wait, out size);
+            if (data == null)
+                return new T[0];
+            var pixelSize = size.Value;
+            return Range.OfInts(pixelSize.Height).SelectMany(y => Range.OfInts(pixelSize.Width).Select((x) =>
+                getter(data[x + y * pixelSize.Width], new Point(x, y), pixelSize)));
+        }
+    }
+
+    public class DepthCamera : IDepthCamera
     {
         KinectSensor sensor;
         public DepthCamera(KinectSensor sensor, DepthImageFormat format)
@@ -45,6 +126,26 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
                 
                 return depthPixels;
             }
+        }
+
+        public DepthImageIndexedPoint?[] Get(int wait)
+        {
+            return Get(wait, (pixel, point, size) =>
+                    {
+                        if (!pixel.IsKnownDepth)
+                            return null;
+                        var dip = new DepthImagePoint()
+                        {
+                            X = point.X,
+                            Y = point.Y,
+                            Depth = pixel.Depth
+                        };
+                        return (DepthImageIndexedPoint?)new DepthImageIndexedPoint()
+                        {
+                            Index = pixel.PlayerIndex,
+                            Point = dip
+                        };
+                    }).ToArray();
         }
 
         public IEnumerable<T> Get<T>(int wait, Func<DepthImagePixel, Point, Size, T> getter)
