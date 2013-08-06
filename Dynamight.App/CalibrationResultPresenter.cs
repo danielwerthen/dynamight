@@ -38,17 +38,7 @@ namespace Dynamight.App
 
             var program = new FastPointCloudProgram(15f);
             window.SetProgram(program);
-            program.Draw().All((xp, yp) =>
-            {
-                var x = 0.5 - xp;
-                var y = 0.5 - yp;
-                var i = Math.Sqrt(x * x + y * y) * 2.5;
-                if (i > 1)
-                    i = 1;
-                i = Math.Pow(1 - i, 3);
-                byte ii = (byte)(i * 255);
-                return Color.FromArgb(ii, 255, 255, 255);
-            }).Finish();
+
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             Camera cam = new Camera(sensor, ColorImageFormat.RgbResolution640x480Fps30);
@@ -61,7 +51,19 @@ namespace Dynamight.App
             sensor.SkeletonStream.Enable();
             program.SetProjection(pc, null); //kc.GetModelView());
 
-            float offset = -2;
+            {
+                double[] xs = Range.OfDoubles(0.35, 0.0, 0.05).ToArray();
+                PointF[] globalPoints = xs.SelectMany(x => xs.Select(y => new PointF((float)x, (float)y))).ToArray();
+                program.SetPositions(globalPoints.Select(gp => new Vector3(gp.X, -gp.Y, 0.0f)).ToArray());
+                window.RenderFrame();
+                var kinectLocal = cc.Transform(globalPoints.Select(gp => new float[] { gp.X, -gp.Y, 0.0f }).ToArray()).Select(p => new PointF((p.X / 1280f) * 640f, (p.Y / 960f) * 480f)).ToArray();
+                var pict = cam.TakePicture(5);
+                QuickDraw.Start(pict).Color(Color.Red).DrawPoint(kinectLocal, 2.5f).Finish();
+                display.DrawBitmap(pict);
+            }
+            Console.WriteLine("If the red dots are within the white dots, the calibration is presumably good (enough). Press enter to continue.");
+            Console.ReadLine();
+            float offset = 1.5f;
 
             while (true)
             {

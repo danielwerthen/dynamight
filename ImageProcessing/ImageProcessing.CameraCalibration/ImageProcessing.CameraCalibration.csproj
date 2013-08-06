@@ -78,6 +78,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="KinectCalibrator.cs" />
+    <Compile Include="Maths\RigidTransformation.cs" />
     <Compile Include="StereoCalibration.cs" />
     <Compile Include="PhaseModulation.cs" />
     <Compile Include="StructuredLightInterpreter.cs" />

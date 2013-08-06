@@ -56,6 +56,7 @@
     <Compile Include="CompositePlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Rendering.cs" />
+    <Compile Include="TimedBlock.cs" />
     <Compile Include="TriplexCamera.cs" />
   </ItemGroup>
   <ItemGroup>

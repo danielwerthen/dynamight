@@ -43,6 +43,11 @@ namespace Dynamight.App
                 Run = CalibrationResultPresenter.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "lightningFast", "lf" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = LightningFastApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "remotekinect", "rk" }, 
                 Parameters = new string[] { },
                 Run = RemoteApp.Run

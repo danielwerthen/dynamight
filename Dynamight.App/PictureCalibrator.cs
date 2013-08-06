@@ -50,34 +50,37 @@ namespace Dynamight.App
             var tpcorners = pcorners.Select(points => StereoCalibration.Undistort(kinectcalib, points)).ToArray();
             var hgraphs = tpcorners.Zip(maps.Select(m => m.ProjCorners), (c, p) => StereoCalibration.FindHomography(c, p));
             var ptkcorners = tkcorners.Zip(hgraphs, (ps, hg) => hg(ps)).ToArray();
-            bool proceed = false;
-            window.Keyboard.KeyDown += (o, e) =>
-            {
-                proceed = true;
-            };
-            window2.Keyboard.KeyDown += (o, e) =>
-            {
-                proceed = true;
-            };
-            for (int i = 0; i < maps.Length; i++)
-            {
-                Projector proj = new Projector();
-                var map1 = (Bitmap)maps[i].Camera.Clone();
-                QuickDraw.Start(map1).DrawPoint(kcorners[i], 5).Finish();
-                var map2 = (Bitmap)maps[i].Projector.Clone();
-                QuickDraw.Start(map2).DrawPoint(pcorners[i], 5).Finish();
-                window.DrawBitmap(map1);
-                window2.DrawBitmap(map2);
-                proj.DrawPoints(ptkcorners[i], 5f);
-                while (!proceed)
-                {
-                    window.ProcessEvents();
-                    window2.ProcessEvents();
-                }
-                proceed = false;
-            }
+            //bool proceed = false;
+            //window.Keyboard.KeyDown += (o, e) =>
+            //{
+            //    proceed = true;
+            //};
+            //window2.Keyboard.KeyDown += (o, e) =>
+            //{
+            //    proceed = true;
+            //};
+            //for (int i = 0; i < maps.Length; i++)
+            //{
+            //    Projector proj = new Projector();
+            //    var map1 = (Bitmap)maps[i].Camera.Clone();
+            //    QuickDraw.Start(map1).DrawPoint(kcorners[i], 5).Finish();
+            //    var map2 = (Bitmap)maps[i].Projector.Clone();
+            //    QuickDraw.Start(map2).DrawPoint(pcorners[i], 5).Finish();
+            //    window.DrawBitmap(map1);
+            //    window2.DrawBitmap(map2);
+            //    proj.DrawPoints(ptkcorners[i], 5f);
+            //    while (!proceed)
+            //    {
+            //        window.ProcessEvents();
+            //        window2.ProcessEvents();
+            //    }
+            //    proceed = false;
+            //}
             var projcalib = StereoCalibration.CalibrateCamera(ptkcorners, maps.First().Camera.Size, pattern, chsize);
-
+            Console.WriteLine("Save result?");
+            Console.ReadLine();
+            Utils.SerializeObject(kinectcalib, Calibration.KinectDefaultFileName);
+            Utils.SerializeObject(projcalib, Calibration.ProjectorDefaultFileName);
             
         }
     }

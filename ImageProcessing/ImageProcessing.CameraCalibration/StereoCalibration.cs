@@ -120,7 +120,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             var globalCorners = cameraCorners.Select(row => globals).ToArray();
             var intrinsic = new IntrinsicCameraParameters();
             ExtrinsicCameraParameters[] cameraExtrinsicsArray;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, cameraSize, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, cameraCorners, cameraSize, intrinsic, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_ZERO_TANGENT_DIST | CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out cameraExtrinsicsArray);
             var extrinsic = cameraExtrinsicsArray.First();
             return new CalibrationResult() { Intrinsic = intrinsic, Extrinsic = extrinsic };
         }
