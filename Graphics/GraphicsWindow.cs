@@ -160,6 +160,8 @@ namespace Graphics
             OpenTK.Graphics.OpenGL.PixelFormat format;
             if (bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format8bppIndexed)
                 format = OpenTK.Graphics.OpenGL.PixelFormat.Luminance;
+            else if (bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format24bppRgb)
+                format = OpenTK.Graphics.OpenGL.PixelFormat.Bgr;
             else
                 format = OpenTK.Graphics.OpenGL.PixelFormat.Bgra;
 			GL.TexImage2D(Target, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, format, PixelType.UnsignedByte, data.Scan0);

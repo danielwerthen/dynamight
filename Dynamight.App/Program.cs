@@ -48,6 +48,11 @@ namespace Dynamight.App
                 Run = LightningFastApp.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "picTakeHelper", "pth" }, 
+                Parameters = new string[] { },
+                Run = PicTakeHelperApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "remotekinect", "rk" }, 
                 Parameters = new string[] { },
                 Run = RemoteApp.Run

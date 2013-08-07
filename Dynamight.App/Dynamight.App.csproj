@@ -79,6 +79,7 @@
     <Compile Include="LightningFastApp.cs" />
     <Compile Include="MovingHeadsApp.cs" />
     <Compile Include="OverviewApp.cs" />
+    <Compile Include="PicTakeHelperApp.cs" />
     <Compile Include="PictureCalibrator.cs" />
     <Compile Include="PictureGrabber.cs" />
     <Compile Include="Program.cs" />

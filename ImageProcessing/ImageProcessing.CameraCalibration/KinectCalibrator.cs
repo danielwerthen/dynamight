@@ -20,12 +20,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
 
         public OpenTK.Matrix4 GetModelView(Matrix<float> Adj)
         {
-            var rt = DenseMatrix.OfColumns(4,4, new float[][] {
-                new float[] { 1,0,0,-0.0f },
-                new float[] { 0,1,0,0.0f },
-                new float[] { 0,0,1,0 },
-                new float[] { 0,0,0,1 },
-            }) * K2G * Adj;
+            var rt = K2G * (Adj ?? DenseMatrix.Identity(4));
             return new OpenTK.Matrix4(
                 rt[0, 0], rt[1, 0], rt[2, 0], rt[3, 0],
                 rt[0, 1], rt[1, 1], rt[2, 1], rt[3, 1],

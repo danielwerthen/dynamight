@@ -15,13 +15,13 @@ namespace Dynamight.App
 
         public static void Run(string[] args)
         {
-            var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
-            var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
-            window.Load();
-            window.ResizeGraphics();
-            var window2 = new BitmapWindow(main.Bounds.Left + 50, 50, 640, 480);
-            window2.Load();
-            window2.ResizeGraphics();
+            //var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
+            //var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
+            //window.Load();
+            //window.ResizeGraphics();
+            //var window2 = new BitmapWindow(main.Bounds.Left + 50, 50, 640, 480);
+            //window2.Load();
+            //window2.ResizeGraphics();
             CalibrationResult kinectcalib = null;
             if (args.Length > 0)
             {
@@ -33,8 +33,10 @@ namespace Dynamight.App
             var maps = folders.SelectMany(f => PictureGrabber.GetBitmaps(f)).ToArray();
             Size pattern = new Size(7, 4);
             float chsize = 0.05f;
-            var kcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Camera, pattern)).Where(r => r != null).ToArray();
-            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, pattern)).Where(r => r != null).ToArray();
+            var kcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Camera, pattern)).ToArray();
+            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, pattern)).Take(0).ToArray();
+            kcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? a : null).Where(a => a != null).ToArray();
+            pcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? b : null).Where(a => a != null).ToArray();
             if (kcorners.Count() != pcorners.Count())
                 Console.WriteLine("Number of good shots did not match.");
             if (kinectcalib == null)
@@ -76,7 +78,9 @@ namespace Dynamight.App
             //    }
             //    proceed = false;
             //}
-            var projcalib = StereoCalibration.CalibrateCamera(ptkcorners, maps.First().Camera.Size, pattern, chsize);
+            Projector proj = new Projector();
+            var projcalib = StereoCalibration.CalibrateCamera(ptkcorners, proj.Size, pattern, chsize);
+            proj.Close();
             Console.WriteLine("Save result?");
             Console.ReadLine();
             Utils.SerializeObject(kinectcalib, Calibration.KinectDefaultFileName);

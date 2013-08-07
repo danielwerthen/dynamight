@@ -20,7 +20,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Maths
                 rt[0, 2], rt[1, 2], rt[2, 2], rt[3, 2],
                 rt[0, 3], rt[1, 3], rt[2, 3], rt[3, 3]);
         }
-        public static Matrix<float> FindTransform(float[][] A, float[][] B)
+        public static Matrix<float> FindTransform(float[][] A, float[][] B, out float error)
         {
             var a = A.Select(v => new DenseVector(v)).ToArray();
             var b = B.Select(v => new DenseVector(v)).ToArray();
@@ -34,7 +34,8 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Maths
                 R *= DenseMatrix.OfRows(3, 3, new float[][] { new float[] { 1, 1, 1 }, new float[] { 1, 1, 1 }, new float[] { -1, -1, -1 } });
             var T = -R * Ca + Cb;
             var bp = a.Select(ai => R * ai + T).ToArray();
-            var err = bp.Zip(b, (bpi, bi) => (bpi - bi).DotProduct(bpi - bi)).Sum();
+            error = bp.Zip(b, (bpi, bi) => (bpi - bi).DotProduct(bpi - bi)).Sum();
+            error = (float)Math.Sqrt(error) / (float)bp.Length;
             var result = DenseMatrix.OfColumns(4, 4, new float[][] { 
                 R.Column(0).Concat(new float[] { 0 }).ToArray(),
                 R.Column(1).Concat(new float[] { 0 }).ToArray(),

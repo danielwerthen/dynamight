@@ -142,7 +142,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
                 hm.ProjectPoints(p);
             IntrinsicCameraParameters projIntrin = new IntrinsicCameraParameters();
             ExtrinsicCameraParameters[] projExtrins;
-            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_RATIONAL_MODEL, out projExtrins);
+            Emgu.CV.CameraCalibration.CalibrateCamera(globalCorners, proj, projector.Size, projIntrin, Emgu.CV.CvEnum.CALIB_TYPE.CV_CALIB_ZERO_TANGENT_DIST | CALIB_TYPE.CV_CALIB_FIX_K3, out projExtrins);
 
             return new CalibrationResult() { Intrinsic = projIntrin, Extrinsic = projExtrins.First() };
         }

@@ -1,4 +1,5 @@
 ﻿using Dynamight.ImageProcessing.CameraCalibration.Utils;
+using Graphics;
 using Graphics.Input;
 using Microsoft.Kinect;
 using OpenTK.Input;
@@ -45,13 +46,27 @@ namespace Dynamight.App
                 Console.Write("Please enter a valid folder name for output pictures: ");
                 folderName = Console.ReadLine();
             }
+            Func<Bitmap> cam;
             var kinects = KinectSensor.KinectSensors.Where(s => s.Status == KinectStatus.Connected).ToArray();
-            var camera = kinects.Select(s =>
+            var xcam = new ExCamera();
+            if (true)
             {
-                s.Start();
-                return new Camera(s, ColorImageFormat.RgbResolution1280x960Fps12);
-            }).First();
+                var camera = kinects.Select(s =>
+                {
+                    s.Start();
+                    return new Camera(s, ColorImageFormat.RgbResolution1280x960Fps12);
+                }).First();
+                cam = () => camera.TakePicture(3);
+            }
+            else
+            {
+                cam = () => xcam.TakePicture();
+            }
             Projector projector = new Projector();
+            var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
+            var display = new BitmapWindow(main.Bounds.Left + 50, 50, 1280, 960);
+            display.Load();
+            display.ResizeGraphics();
             var dir = Path.Combine(Directory.GetCurrentDirectory(), folderName);
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
@@ -82,25 +97,32 @@ namespace Dynamight.App
                 string projFile = string.Format("{0}/{1}{2:000}.bmp", dir, PROJ_FILE, passes);
                 string projCornerFile = string.Format("{0}/{1}{2:000}.xml", dir, PROJ_CORNER_FILE, passes);
                 projector.DrawBackground(Color.Black);
+
                 Console.WriteLine("Press space to do cam pass with corners, q to exit");
-                while (!proceed) projector.window.ProcessEvents();
+                while (!proceed)
+                {
+                    display.DrawBitmap(cam());
+                    projector.window.ProcessEvents();
+                }
                 proceed = false;
                 if (quit)
                     break;
-                camera.TakePicture(0).Save(camFile);
+                cam().Save(camFile);
                 Console.WriteLine("Adjust projection then press space");
                 while (!proceed)
                 {
                     projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);
+                    display.DrawBitmap(cam());
                     projector.window.ProcessEvents();
                 }
                 proceed = false;
                 var points = projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);
-                camera.TakePicture(4).Save(projFile);
+                cam().Save(projFile);
                 Utils.SerializeObject(points, projCornerFile);
                 passes++;
             }
             projector.Close();
+            display.Close();
         }
     }
 }

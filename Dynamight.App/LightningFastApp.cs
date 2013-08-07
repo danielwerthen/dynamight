@@ -17,6 +17,7 @@ namespace Dynamight.App
 {
     public class LightningFastApp
     {
+        public const string IR2RGBFILE = "ir2rgbTransform.xml";
         public static void Run(string[] args)
         {
 
@@ -45,10 +46,13 @@ namespace Dynamight.App
             KinectCalibrator kc = new KinectCalibrator(cc);
             sensor.Start();
             sensor.SkeletonStream.Enable();
-            program.SetProjection(pc, kc.GetC2GModelView());
+            float[] data = Utils.DeSerializeObject<float[]>(IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
+            MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4,4, data);
+            program.SetProjection(pc, kc.GetModelView(D2C));
 
-            MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = null;
             TimedBlockRecorder rec = new TimedBlockRecorder();
+            float leastError = float.MaxValue;
+            MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> leastErrD2C;
             while (true)
             {
                 CompositePlayer[] players;
@@ -62,15 +66,22 @@ namespace Dynamight.App
                     depths = players.Where(p => p.Skeleton != null).SelectMany(s => s.DepthPoints).ToArray();
                 if (depths.Count() > 0)
                 {
-                    if (D2C == null)
+                    if (false)
                     {
                         using (var block = rec.GetBlock("Find Rigid transform"))
                         {
                             var points = kc.ToColorSpace(sensor.CoordinateMapper, depths, format);
                             var B = points.Select(p => new float[] { p.X, p.Y, p.Z }).ToArray();
                             var A = depths.Select(d => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, d)).Select(sp => new float[] { sp.X, sp.Y, sp.Z }).ToArray();
-                            D2C = Dynamight.ImageProcessing.CameraCalibration.Maths.RigidTransformation.FindTransform(A, B);
-                            program.SetProjection(pc, kc.GetModelView(D2C));
+                            float error;
+                            var res = Dynamight.ImageProcessing.CameraCalibration.Maths.RigidTransformation.FindTransform(A, B, out error);
+                            if (error < leastError)
+                            {
+                                D2C = leastErrD2C = res;
+                                Utils.SerializeObject(leastErrD2C.ToColumnWiseArray(), IR2RGBFILE);
+                                leastError = error;
+                                program.SetProjection(pc, kc.GetModelView(D2C));
+                            }
                         }
                     }
                     Vector3[] ps;
@@ -87,6 +98,7 @@ namespace Dynamight.App
                 Console.Clear();
                 Console.WriteLine(rec.ToString());
                 Console.WriteLine(rec.AverageAll());
+                Console.WriteLine("Error: " + leastError);
             }
         }
     }
