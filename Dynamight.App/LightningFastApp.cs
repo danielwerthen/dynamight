@@ -48,7 +48,8 @@ namespace Dynamight.App
             sensor.SkeletonStream.Enable();
             float[] data = Utils.DeSerializeObject<float[]>(IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
             MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4,4, data);
-            program.SetProjection(pc, kc.GetModelView(D2C));
+            
+            program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
 
             TimedBlockRecorder rec = new TimedBlockRecorder();
             float leastError = float.MaxValue;

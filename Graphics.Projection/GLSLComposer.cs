@@ -69,6 +69,20 @@ void main(void)
 
 }
 ";
+        public const string VSLightingStaticNormal = @"
+varying vec3 N;
+varying vec3 v;
+void main(void)
+{
+    gl_FrontColor = gl_Color;
+    gl_TexCoord[0] = gl_MultiTexCoord0; 
+    vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
+    v = vec3(gl_ModelViewProjectionMatrix * gl_Vertex);       
+    N = vec3(0,0,1);
+    gl_Position = distort(V);
+
+}
+";
         public const string VSLightingUndistorted = @"
 varying vec3 N;
 varying vec3 v;
@@ -88,7 +102,7 @@ void main(void)
 vec4 getLightComp(gl_LightSourceParameters light, vec3 v, vec3 N, vec4 mat)
 {
     vec3 D = v - light.position.xyz;
-    float dist = distance(light.position.xyz, v);
+    float dist = distance(v, light.position.xyz);
     float attn = 1.0 / (light.constantAttenuation + 
                         light.linearAttenuation * dist + 
                         light.quadraticAttenuation * dist * dist);
@@ -139,6 +153,16 @@ void main(void)
 }
 ";
 
+        public const string FSWhite = @"
+varying vec3 N;
+varying vec3 v;
+void main(void)
+{
+
+   gl_FragColor = vec4(1,1,1,1);
+}
+";
+
         public const string FSStatic = @"
 
 varying vec3 N;
@@ -156,6 +180,20 @@ void main(void)
    gl_FragColor = Idiff * gl_Color;
 }
 ";
+    }
+
+    public class GLSLLightStudioProgram : GLSLProgram
+    {
+        public GLSLLightStudioProgram()
+        {
+            this.VS = GLSLSnippets.VSDistort + GLSLSnippets.VSLightingStaticNormal;
+            this.FS = GLSLSnippets.FSLightFun + GLSLSnippets.FSMultiLight;
+        }
+
+        public void Setup(int maxLights)
+        {
+            GL.Uniform1(GL.GetUniformLocation(program, "MAXLIGHTS"), maxLights);
+        }
     }
 
     public class GLSLPointCloudProgram : GLSLProgram
@@ -179,6 +217,10 @@ void main(void)
         public string VS;
         public string FS;
         protected int program;
+        public int ProgramLocation
+        {
+            get { return program; }
+        }
         public void Load()
         {
             var vs = GraphicsWindow.CreateShader2(ShaderType.VertexShader, VS);

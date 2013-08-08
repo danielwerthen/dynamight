@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Animatable.cs" />
+    <Compile Include="LightStudioProgram.cs" />
     <Compile Include="FastPointCloudProgram.cs" />
     <Compile Include="GLSLComposer.cs" />
     <Compile Include="Lights\LightRenderable.cs" />

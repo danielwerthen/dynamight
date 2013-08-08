@@ -155,7 +155,7 @@ void main(void)
             return Distort(v, K, F, C, parent.Width, parent.Height);
         }
 
-		public void SetProjection(CalibrationResult calib, Matrix4? modelView = null)
+		public void SetProjection(CalibrationResult calib, Matrix4? modelView = null, Matrix4? offset = null)
 		{
             this.calib = calib;
 			parent.MakeCurrent();
@@ -164,11 +164,11 @@ void main(void)
 			var Height = parent.Height;
 			GL.Viewport(0, 0, Width, Height);
 			var rt = calib.Extrinsic.ExtrinsicMatrix.Data;
-			var extrin = new OpenTK.Matrix4d(
-					rt[0, 0], rt[1, 0], rt[2, 0], 0,
-					rt[0, 1], rt[1, 1], rt[2, 1], 0,
-					rt[0, 2], rt[1, 2], rt[2, 2], 0,
-					rt[0, 3], rt[1, 3], rt[2, 3], 1);
+			var extrin = new OpenTK.Matrix4(
+                    (float)rt[0, 0], (float)rt[1, 0], (float)rt[2, 0], 0,
+                    (float)rt[0, 1], (float)rt[1, 1], (float)rt[2, 1], 0,
+                    (float)rt[0, 2], (float)rt[1, 2], (float)rt[2, 2], 0,
+                    (float)rt[0, 3], (float)rt[1, 3], (float)rt[2, 3], 1) * (offset.HasValue ? offset.Value : Matrix4.Identity);
 			GL.MatrixMode(MatrixMode.Projection);
 			GL.LoadMatrix(ref extrin);
 
@@ -250,15 +250,20 @@ void main(void)
 
             GL.UseProgram(program);
             GL.Uniform1(GL.GetUniformLocation(program, "COLORTABLE"), unit - TextureUnit.Texture0);
-			GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
-			GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
-			GL.Uniform2(GL.GetUniformLocation(program, "F"), F);
-			GL.Uniform2(GL.GetUniformLocation(program, "C"), C);
-			GL.UniformMatrix4(GL.GetUniformLocation(program, "K"), true, ref K);
+            SetupDistortion(program);
 
 
 
 		}
+
+        public virtual void SetupDistortion(int program)
+        {
+            GL.Uniform1(GL.GetUniformLocation(program, "WIDTH"), parent.Width);
+            GL.Uniform1(GL.GetUniformLocation(program, "HEIGHT"), parent.Height);
+            GL.Uniform2(GL.GetUniformLocation(program, "F"), F);
+            GL.Uniform2(GL.GetUniformLocation(program, "C"), C);
+            GL.UniformMatrix4(GL.GetUniformLocation(program, "K"), true, ref K);
+        }
 	}
 
 }

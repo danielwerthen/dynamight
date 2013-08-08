@@ -48,6 +48,11 @@ namespace Dynamight.App
                 Run = LightningFastApp.Run
             },
             new ProgramCommand() {
+                Names = new string[] { "lightStudio", "ls" }, 
+                Parameters = new string[] { "camcalibfile", "projcalibfile" },
+                Run = LightningStudio.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "picTakeHelper", "pth" }, 
                 Parameters = new string[] { },
                 Run = PicTakeHelperApp.Run

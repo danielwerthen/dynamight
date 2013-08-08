@@ -34,7 +34,7 @@ namespace Dynamight.App
             Size pattern = new Size(7, 4);
             float chsize = 0.05f;
             var kcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Camera, pattern)).ToArray();
-            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, pattern)).Take(0).ToArray();
+            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, pattern)).ToArray();
             kcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? a : null).Where(a => a != null).ToArray();
             pcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? b : null).Where(a => a != null).ToArray();
             if (kcorners.Count() != pcorners.Count())

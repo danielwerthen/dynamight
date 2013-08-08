@@ -98,7 +98,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return ToColorSpace(mapper, sp, zTune);
         }
 
-        public float[] ToColorSpace(CoordinateMapper mapper, SkeletonPoint point, float zTune = 0)
+        public float[] ToColorSpace(CoordinateMapper mapper, SkeletonPoint point, float zTune = 1)
         {
             var cp = mapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
             var up = StereoCalibration.Undistort(calib, new PointF[] { new PointF((1280 - cp.X), cp.Y) }).First();
@@ -106,7 +106,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return new float[] { up.X * z, up.Y * z, z, 1 };
         }
 
-        public float[] ToGlobal(KinectSensor sensor, SkeletonPoint point, float offset = 0)
+        public float[] ToGlobal(KinectSensor sensor, SkeletonPoint point, float offset = 1)
         {
             var cp = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(point, ColorImageFormat.RgbResolution1280x960Fps12);
             var up = StereoCalibration.Undistort(calib, new PointF[] { new PointF((1280 - cp.X), cp.Y) }).First();
