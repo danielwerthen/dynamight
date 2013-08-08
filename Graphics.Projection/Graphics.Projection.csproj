@@ -59,6 +59,7 @@
     <Compile Include="GLSLComposer.cs" />
     <Compile Include="Lights\LightRenderable.cs" />
     <Compile Include="Lights\LightSourceParameters.cs" />
+    <Compile Include="MoveableLights.cs" />
     <Compile Include="MovingHeadsProgram.cs" />
     <Compile Include="OverviewProgram.cs" />
     <Compile Include="QuadCloudProgram.cs" />

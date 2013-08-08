@@ -34,7 +34,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new LightStudioProgram(25f);
+            var program = new LightStudioProgram(0.01f);
             window.SetProgram(program);
 
 
@@ -45,8 +45,15 @@ namespace Dynamight.App
             sensor.Start();
             float[] data = Utils.DeSerializeObject<float[]>(LightningFastApp.IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
             MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4, 4, data);
-
             program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
+            //program.SetProjection(pc); //, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
+            var rs = Range.OfDoubles(0.5, -0.5, 0.04);
+            program.SetPositions(rs.SelectMany(x => rs.Select(y => new Vector3((float)x, (float)y, 1.7f))).ToArray());
+            while (true)
+            {
+                window.RenderFrame();
+                window.ProcessEvents();
+            }
             var keyl = new KeyboardListener(window.Keyboard);
             SkeletonPoint[] skeletons = null;
             // Action H hide background:

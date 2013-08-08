@@ -96,78 +96,15 @@ void main(void)
             //GL.NormalPointer(NormalPointerType.Float, VertexC4ubV3f.SizeInBytes, (IntPtr)(4 * sizeof(byte) + Vector3.SizeInBytes));
 
             vertices = new Vector3[0];
-            lights = (Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(8)).Select(_ => new LightSourceParameters()).ToArray();
+            lights.UseInput(parent.Keyboard);
             lights[0].InUse = true;
-            lights[0].Position = new Vector4(0, 0.44f, 0.5f, 1);
-            lights[0].LinearAttenuation = 10f;
-
-            var keyl = new KeyboardListener(parent.Keyboard);
-
-            keyl.AddAction(() => Selection = (Selection == 0 ? null : (int?)0), Key.F1);
-            keyl.AddAction(() => Selection = (Selection == 1 ? null : (int?)1), Key.F2);
-            keyl.AddAction(() => Selection = (Selection == 2 ? null : (int?)2), Key.F3);
-            keyl.AddAction(() => Selection = (Selection == 3 ? null : (int?)3), Key.F4);
-            keyl.AddAction(() => Selection = (Selection == 4 ? null : (int?)4), Key.F5);
-            keyl.AddAction(() => Selection = (Selection == 5 ? null : (int?)5), Key.F6);
-            keyl.AddAction(() => Selection = (Selection == 6 ? null : (int?)6), Key.F7);
-            keyl.AddAction(() => Selection = (Selection == 7 ? null : (int?)7), Key.F8);
-
-            keyl.AddAction(Activate, Key.A);
-
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Right, Key.Left, null, (f) => MoveX(f));
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, null, (f) => MoveY(f));
-            keyl.AddBinaryAction(0.01f, -0.01f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft }, (f) => MoveZ(f));
-
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Right, Key.Left, new Key[] { Key.ControlLeft }, (f) => MoveX(f));
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ControlLeft }, (f) => MoveY(f));
-            keyl.AddBinaryAction(0.05f, -0.05f, Key.Down, Key.Up, new Key[] { Key.ShiftLeft, Key.ControlLeft }, (f) => MoveZ(f));
+            lights[0].Position = new Vector4(0, 0.4f, 1.3f, 1);
+            lights[0].LinearAttenuation = 0f;
+            lights[0].ConstantAttenuation = 1f;
+            lights[0].SpotDirection = new Vector4(0, 0, 1, 0);
 
 
-        }
-        int? Selection = null;
 
-        private void Activate()
-        {
-            if (Selection == null)
-                return;
-            else
-            {
-                var l = lights[Selection.Value];
-                l.InUse = !l.InUse;
-            }
-        }
-
-        private void MoveX(float f)
-        {
-            if (Selection != null)
-            {
-                var l = lights[Selection.Value];
-                l.Position.X += f;
-                Console.Clear();
-                Console.WriteLine(l.Position.ToString());
-            }
-        }
-
-        private void MoveY(float f)
-        {
-            if (Selection != null)
-            {
-                var l = lights[Selection.Value];
-                l.Position.Y += f;
-                Console.Clear();
-                Console.WriteLine(l.Position.ToString());
-            }
-        }
-
-        private void MoveZ(float f)
-        {
-            if (Selection != null)
-            {
-                var l = lights[Selection.Value];
-                l.Position.Z += f;
-                Console.Clear();
-                Console.WriteLine(l.Position.ToString());
-            }
         }
 
         public override void Unload()
@@ -181,10 +118,18 @@ void main(void)
 
         GLSLLightStudioProgram lightProgram = new GLSLLightStudioProgram();
         Vector3[] vertices = new Vector3[0];
-        LightSourceParameters[] lights;
+        MoveableLights lights = new MoveableLights(8);
         public void SetPositions(Vector3[] vertices)
         {
-            this.vertices = vertices;
+
+            float[][] qs = new float[][] { 
+                new float[] { -1, -1 },
+                new float[] { 1, -1 },
+                new float[] { 1, 1 },
+                new float[] { -1, -1 },
+                new float[] { -1, 1 },
+                new float[] { 1, 1 } };
+            this.vertices = vertices.SelectMany(v => qs.Select(q => new Vector3(v.X + q[0] * pointSize, v.Y + q[1] * pointSize, v.Z))).ToArray();
         }
 
         public override void Render()
@@ -193,17 +138,13 @@ void main(void)
             lightProgram.Activate();
             SetupDistortion(lightProgram.ProgramLocation);
 
-            int c = 0;
-            var lids = lights.Where(l => l.InUse).Select(_ => c++).ToArray();
-            if (c > 0)
-                c.ToString();
-            lids.Zip(lights.Where(l => l.InUse), (i, l) => l.Set(i)).ToArray();
-            lightProgram.Setup(c);
+            var activeLights = lights.Activate();
+            lightProgram.Setup(activeLights);
 
             GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(vertices.Length * Vector3.SizeInBytes), IntPtr.Zero, BufferUsageHint.StreamDraw);
             GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(vertices.Length * Vector3.SizeInBytes), vertices, BufferUsageHint.StreamDraw);
 
-            GL.DrawArrays(BeginMode.Points, 0, vertices.Length);
+            GL.DrawArrays(BeginMode.Triangles, 0, vertices.Length);
         }
     }
 }

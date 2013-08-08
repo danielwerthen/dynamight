@@ -56,8 +56,8 @@ vec4 distort(vec4 V)
 ";
 
         public const string VSLighting = @"
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 void main(void)
 {
     gl_FrontColor = gl_Color;
@@ -70,8 +70,8 @@ void main(void)
 }
 ";
         public const string VSLightingStaticNormal = @"
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 void main(void)
 {
     gl_FrontColor = gl_Color;
@@ -84,8 +84,8 @@ void main(void)
 }
 ";
         public const string VSLightingUndistorted = @"
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 void main(void)
 {
     gl_FrontColor = gl_Color;
@@ -99,6 +99,7 @@ void main(void)
 ";
 
         public const string FSLightFun = @"
+float beamAngleDiff = 4.0;
 vec4 getLightComp(gl_LightSourceParameters light, vec3 v, vec3 N, vec4 mat)
 {
     vec3 D = v - light.position.xyz;
@@ -106,9 +107,24 @@ vec4 getLightComp(gl_LightSourceParameters light, vec3 v, vec3 N, vec4 mat)
     float attn = 1.0 / (light.constantAttenuation + 
                         light.linearAttenuation * dist + 
                         light.quadraticAttenuation * dist * dist);
-
+    vec3 SD = normalize(light.spotDirection.xyz);
     vec3 L = normalize(D);
-    vec4 Idiff = attn * light.diffuse * max(dot(N,L), 0.0) + light.ambient;
+    float angle = dot (SD, -L);
+    angle = acos(max(angle, 0.0));
+
+    vec4 Idiff;
+    if (angle < radians(light.spotCutoff))
+    {
+        if (angle > radians(light.spotCutoff - 2.0))
+        {
+            float ratio = (angle - radians(light.spotCutoff - beamAngleDiff)) / (radians(light.spotCutoff) - radians(light.spotCutoff - beamAngleDiff));
+            Idiff = clamp((1.0 - pow(ratio, light.spotExponent)), 0.0, 1.0) * attn * light.diffuse * max(dot(N,L), 0.0) + light.ambient;
+        }
+        else
+            Idiff = attn * light.diffuse * max(dot(N,L), 0.0) + light.ambient;
+    }
+    else
+        Idiff = light.ambient;
     Idiff = clamp(Idiff * mat, 0.0, 1.0);
     return Idiff;
 }
@@ -132,8 +148,8 @@ void main(void)
 
         public const string FSLighting = @"
 
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 uniform sampler2D COLORTABLE;
 
 void main(void)
@@ -154,8 +170,8 @@ void main(void)
 ";
 
         public const string FSWhite = @"
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 void main(void)
 {
 
@@ -165,8 +181,8 @@ void main(void)
 
         public const string FSStatic = @"
 
-varying vec3 N;
-varying vec3 v;
+varying  vec3 N;
+varying  vec3 v;
 uniform sampler2D COLORTABLE;
 
 void main(void)
