@@ -15,7 +15,7 @@ namespace Graphics.Projection.Lights
         public LightRenderable(LightSourceParameters light, Func<Vector2, Vector2> texTran)
         {
             this.light = light;
-            this.Shape = new LightShape(new Vector3(0, 0, 0), 0.5f, new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1), texTran);
+            this.Shape = new LightShape(new Vector3(0, 0, 0), 0.2f, new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1), texTran);
             this.Animatable = new LightAnima(light);
         }
 

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Graphics.Projection
 {
-    public class MoveableLights
+    public class MoveableLights : IEnumerable<LightSourceParameters>
     {
         LightSourceParameters[] lights;
         public MoveableLights(int count)
@@ -99,6 +99,16 @@ namespace Graphics.Projection
                 Console.Clear();
                 Console.WriteLine(l.Position.ToString());
             }
+        }
+
+        public IEnumerator<LightSourceParameters> GetEnumerator()
+        {
+            return lights.AsEnumerable<LightSourceParameters>().GetEnumerator();
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return lights.GetEnumerator();
         }
     }
 }

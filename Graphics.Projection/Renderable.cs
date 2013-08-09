@@ -42,7 +42,7 @@ namespace Graphics.Projection
             B = 150;
             G = 150;
             A = 255;
-            Normal = new Vector3(0, 0, 1);
+            Normal = new Vector3(0, 0, -1);
             TexCoord = new Vector2(0.25f, 0.25f);
             Position = v;
         }

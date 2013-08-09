@@ -37,6 +37,12 @@ namespace Dynamight.App
             var program = new LightStudioProgram(0.01f);
             window.SetProgram(program);
 
+            var overviewWindow = new ProgramWindow(750, 50, 1280, 960);
+            overviewWindow.Load();
+            overviewWindow.ResizeGraphics();
+            OverviewProgram overview = new OverviewProgram(program);
+            overviewWindow.SetProgram(overview);
+
 
             KinectSensor sensor = KinectSensor.KinectSensors.First();
             var format = DepthImageFormat.Resolution80x60Fps30;
@@ -47,13 +53,13 @@ namespace Dynamight.App
             MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4, 4, data);
             program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
             //program.SetProjection(pc); //, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
-            var rs = Range.OfDoubles(0.5, -0.5, 0.04);
-            program.SetPositions(rs.SelectMany(x => rs.Select(y => new Vector3((float)x, (float)y, 1.7f))).ToArray());
-            while (true)
-            {
-                window.RenderFrame();
-                window.ProcessEvents();
-            }
+            //var rs = Range.OfDoubles(0.5, -0.5, 0.04);
+            //program.SetPositions(rs.SelectMany(x => rs.Select(y => new Vector3((float)x, (float)y, 1.7f))).ToArray());
+            //while (true)
+            //{
+            //    window.RenderFrame();
+            //    window.ProcessEvents();
+            //}
             var keyl = new KeyboardListener(window.Keyboard);
             SkeletonPoint[] skeletons = null;
             // Action H hide background:
@@ -71,11 +77,18 @@ namespace Dynamight.App
             }, OpenTK.Input.Key.H);
             while (true)
             {
-                var points = depthCam.Get(1000);
-                skeletons = points.Where(p => p.HasValue).Select(p => p.Value).Select(p => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, p.Point)).ToArray();
+                var points = depthCam.Get(1000).Where(p => p.HasValue).Select(p => p.Value);
+                skeletons = points.Select(p => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, p.Point)).ToArray();
                 program.SetPositions(skeletons.Where(sp => !hideBackground || sp.Z < zCutoff).Select(sp => new Vector3(sp.X, sp.Y, sp.Z)).ToArray());
+                overview.SetPointCloud(0, skeletons.Select(sp =>
+                {
+                    var gp = kc.ToGlobal(sp);
+                    return new DynamicVertex(new Vector3(gp[0], gp[1], gp[2]));
+                }).ToArray());
                 window.RenderFrame();
+                overviewWindow.RenderFrame();
                 window.ProcessEvents();
+                overviewWindow.ProcessEvents();
             }
         }
     }

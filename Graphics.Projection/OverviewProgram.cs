@@ -82,7 +82,15 @@ void main(void)
   //gl_FragColor = vec4(1,1,1,1);
 }
 ";
-        
+        public OverviewProgram()
+        {
+        }
+
+        LightStudioProgram lightStudio;
+        public OverviewProgram(LightStudioProgram lightStudio)
+        {
+            this.lightStudio = lightStudio;
+        }
 
         /// <summary>
         /// Sets up a projective viewport
@@ -154,20 +162,11 @@ void main(void)
             };
             textures.Load(maps);
 
-            lights = (Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(8)).Select(_ => new LightSourceParameters()).ToArray();
+            if (lightStudio != null)
+                lights = lightStudio.Lights;
+            else
+                lights = new MoveableLights(8);
 
-            var xs = Dynamight.ImageProcessing.CameraCalibration.Range.OfDoubles(2, -2, 0.1f);
-            //dynamicRenderer = new Renderer(new DynamicRenderable[] {
-            //    new DynamicRenderable() {
-            //        Vertices = xs.SelectMany(x => xs.Select(y => new DynamicVertex(new Vector3((float)x, (float)y, 0)))).ToArray()
-            //        //Vertices = new DynamicVertex[] {
-            //        //    new DynamicVertex(new Vector3(0,0,0)),
-            //        //    new DynamicVertex(new Vector3(1,0,0)),
-            //        //    new DynamicVertex(new Vector3(0,1,0)),
-            //        //    new DynamicVertex(new Vector3(0,0,1)),
-            //        //}
-            //    }
-            //});
             dynamicRenderer = new Renderer(dynamics = (Dynamight.ImageProcessing.CameraCalibration.Range.OfInts(6)).Select(_ => new DynamicRenderable()).ToArray());
             staticRenderer = new Renderer(null, (new Renderable[] {
                 Grid = new Renderable() {
@@ -186,16 +185,8 @@ void main(void)
 
             keyl = new KeyboardListener(parent.Keyboard);
 
-            keyl.AddAction(() => Selection = (Selection == 0 ? null : (int?)0), Key.F1);
-            keyl.AddAction(() => Selection = (Selection == 1 ? null : (int?)1), Key.F2);
-            keyl.AddAction(() => Selection = (Selection == 2 ? null : (int?)2), Key.F3);
-            keyl.AddAction(() => Selection = (Selection == 3 ? null : (int?)3), Key.F4);
-            keyl.AddAction(() => Selection = (Selection == 4 ? null : (int?)4), Key.F5);
-            keyl.AddAction(() => Selection = (Selection == 5 ? null : (int?)5), Key.F6);
-            keyl.AddAction(() => Selection = (Selection == 6 ? null : (int?)6), Key.F7);
-            keyl.AddAction(() => Selection = (Selection == 7 ? null : (int?)7), Key.F8);
+            keyl.AddAction(() => Selection = (Selection == null ? (int?)1 : null), Key.C);
 
-            keyl.AddAction(Activate, Key.A);
             keyl.AddAction(() => Grid.Visible = !Grid.Visible, Key.G);
 
             keyl.AddBinaryAction(0.01f, -0.01f, Key.Right, Key.Left, null, (f) => MoveX(f));
@@ -217,9 +208,8 @@ void main(void)
             GL.Enable(EnableCap.Light6);
             GL.Enable(EnableCap.Light7);
 
-            lights[0].InUse = true;
         }
-        int? Selection = null;
+        int? Selection = 1;
 
         private void Activate()
         {
@@ -267,7 +257,7 @@ void main(void)
 
         KeyboardListener keyl;
 
-        LightSourceParameters[] lights;
+        MoveableLights lights;
         public override void Unload()
         {
             base.Unload();
@@ -289,12 +279,8 @@ void main(void)
             staticRenderer.Render();
 
             dynamicProgram.Activate();
-            int c = 0;
-            var lids = lights.Where(l => l.InUse).Select(_ => c++).ToArray();
-            if (c > 0)
-                c.ToString();
-            lids.Zip(lights.Where(l => l.InUse), (i, l) => l.Set(i)).ToArray();
-            dynamicProgram.Setup(c);
+
+            dynamicProgram.Setup(lights.Activate());
             dynamicRenderer.Render();
         }
     }

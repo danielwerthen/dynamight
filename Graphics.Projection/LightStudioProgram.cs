@@ -119,6 +119,11 @@ void main(void)
         GLSLLightStudioProgram lightProgram = new GLSLLightStudioProgram();
         Vector3[] vertices = new Vector3[0];
         MoveableLights lights = new MoveableLights(8);
+        public MoveableLights Lights
+        {
+            get { return lights; }
+        }
+
         public void SetPositions(Vector3[] vertices)
         {
 
