@@ -75,9 +75,13 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
 
         public PointF[] DrawCheckerboard(System.Drawing.Size pattern, double rotx, double roty, double rotz, double scale = 1, double offsetx = 0, double offsety = 0)
         {
+            return DrawCheckerboard(pattern, rotx, roty, rotz, scale, scale, offsetx, offsety);
+        }
+        public PointF[] DrawCheckerboard(System.Drawing.Size pattern, double rotx, double roty, double rotz, double scalex, double scaley, double offsetx = 0, double offsety = 0)
+        {
             window.SetProgram(cp);
             cp.SetSize(pattern.Width, pattern.Height);
-            cp.SetTransforms(rotx, roty, rotz, scale, offsetx, offsety);
+            cp.SetTransforms(rotx, roty, rotz, scalex, scaley, offsetx, offsety);
             window.RenderFrame();
             return cp.GetCorners().ToArray();
         }

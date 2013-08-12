@@ -52,7 +52,7 @@ namespace Dynamight.App
             float[] data = Utils.DeSerializeObject<float[]>(LightningFastApp.IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
             MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4, 4, data);
             var adjustment = OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f);
-            program.SetProjection(pc, kc.GetModelView(D2C), adjustment);
+            program.SetProjection(pc, kc.GetModelView(D2C), null);
 
             //program.SetProjection(pc); //, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
             //var rs = Range.OfDoubles(0.5, -0.5, 0.04);

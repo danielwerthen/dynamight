@@ -36,8 +36,12 @@ void main(void)
 ";
 
 		double rotx, roty, rotz,
-			scale, offsetx, offsety;
-		public void SetTransforms(double rotx, double roty, double rotz, double scale, double offsetx, double offsety)
+			scalex, scaley, offsetx, offsety;
+        public void SetTransforms(double rotx, double roty, double rotz, double scale, double offsetx, double offsety)
+        {
+            SetTransforms(rotx, roty, rotz, scale, scale, offsetx, offsety);
+        }
+		public void SetTransforms(double rotx, double roty, double rotz, double scalex, double scaley, double offsetx, double offsety)
 		{
 			parent.MakeCurrent();
 			GL.MatrixMode(MatrixMode.Modelview);
@@ -45,14 +49,15 @@ void main(void)
 			var rotX = OpenTK.Matrix4d.CreateRotationX(rotx);
 			var rotY = OpenTK.Matrix4d.CreateRotationY(roty);
 			var rotZ = OpenTK.Matrix4d.CreateRotationZ(rotz);
-			var sm = OpenTK.Matrix4d.Scale(scale);
+			var sm = OpenTK.Matrix4d.Scale(scalex, scaley, 1);
 			var offset = OpenTK.Matrix4d.CreateTranslation(offsetx, offsety, 0);
 			var tran = OpenTK.Matrix4d.CreateTranslation(-0.5, -0.5, 0);
 			var trani = OpenTK.Matrix4d.CreateTranslation(0.5, 0.5, 0);
 			this.rotx = rotx;
 			this.roty = roty;
 			this.rotz = rotz;
-			this.scale = scale;
+            this.scalex = scalex;
+            this.scaley = scaley;
 			this.offsetx = offsetx;
 			this.offsety = offsety;
 			var mat = tran * rotX * rotY * rotZ * sm * offset * trani;
@@ -94,7 +99,7 @@ void main(void)
 			var rotX = OpenTK.Matrix4d.CreateRotationX(rotx);
 			var rotY = OpenTK.Matrix4d.CreateRotationY(-roty);
 			var rotZ = OpenTK.Matrix4d.CreateRotationZ(-rotz);
-			var sm = OpenTK.Matrix4d.Scale(scale);
+			var sm = OpenTK.Matrix4d.Scale(scalex, scaley, 1);
 			var offset = OpenTK.Matrix4d.CreateTranslation(offsetx, offsety, 0);
 			var tran = OpenTK.Matrix4d.CreateTranslation(-0.5, -0.5, 0);
 			var trani = OpenTK.Matrix4d.CreateTranslation(0.5, 0.5, 0);

@@ -12,8 +12,49 @@ namespace Dynamight.App
 {
     public class PictureCalibrator
     {
-
+        //Manual pickings
         public static void Run(string[] args)
+        {
+            //var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
+            //var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
+            //window.Load();
+            //window.ResizeGraphics();
+            //var window2 = new BitmapWindow(main.Bounds.Left + 50, 50, 640, 480);
+            //window2.Load();
+            //window2.ResizeGraphics();
+            CalibrationResult kinectcalib = null;
+            if (args.Length > 0)
+            {
+                var file = args.First();
+                kinectcalib = Utils.DeSerializeObject<CalibrationResult>(file);
+            }
+            Console.Write("Enter the folders you'd like to use: ");
+            var folders = Console.ReadLine().Split(' ').ToArray();
+            var maps = folders.SelectMany(f => PictureGrabber.GetManualBitmaps(f)).ToArray();
+            Size pattern = new Size(7, 4);
+            float chsize = 0.05f;
+            var kcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Camera, pattern)).ToArray();
+            var pcorners = maps.Select(ms => ms.ProjCorners).ToArray();
+            if (kinectcalib == null)
+            {
+                if (kcorners.Length == 0)
+                {
+                    Console.WriteLine("Could not find camera corners");
+                    return;
+                }
+                kinectcalib = StereoCalibration.CalibrateCamera(kcorners, maps.First().Camera.Size, pattern, chsize);
+            }
+            Projector proj = new Projector();
+            var projcalib = StereoCalibration.CalibrateCamera(pcorners, proj.Size, pattern, chsize);
+            proj.Close();
+            Console.WriteLine("Save result?");
+            Console.ReadLine();
+            Utils.SerializeObject(kinectcalib, Calibration.KinectDefaultFileName);
+            Utils.SerializeObject(projcalib, Calibration.ProjectorDefaultFileName);
+
+        }
+
+        public static void RunDual(string[] args)
         {
             //var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             //var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);

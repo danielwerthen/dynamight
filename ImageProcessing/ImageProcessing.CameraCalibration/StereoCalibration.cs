@@ -99,7 +99,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
             return diff > thresh;
         }
 
-        public static CalibrationResult CalibrateCamera(PointF[] cameraCorners, Camera camera, Size pattern, float checkerBoardSize, CalibrationResult useIntrinsic)
+        public static CalibrationResult CalibrateCamera(PointF[] cameraCorners, Size pattern, float checkerBoardSize, CalibrationResult useIntrinsic)
         {
             var globals = GenerateCheckerBoard(pattern, checkerBoardSize, 0);
             var globalCorners = new MCvPoint3D32f[][] { globals };
