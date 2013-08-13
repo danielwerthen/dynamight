@@ -69,6 +69,7 @@ namespace Dynamight.App
             var projResult = StereoCalibration.CalibrateCamera(transform(corners), new Size(7, 4), 0.05f, projIntrinsic);
             Utils.SerializeObject(camResult, intrinsicfile);
             Utils.SerializeObject(projResult, projFile);
+            proj.Close();
         }
 
         public static void RunOld(string[] args)

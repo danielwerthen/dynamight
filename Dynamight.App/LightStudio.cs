@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Dynamight.Processing;
 using Graphics.Input;
+using OpenTK.Input;
 
 namespace Dynamight.App
 {
@@ -34,7 +35,7 @@ namespace Dynamight.App
 
             var window = ProgramWindow.OpenOnSecondary();
 
-            var program = new LightStudioProgram(0.01f);
+            var program = new LightStudioProgram(0.08f);
             window.SetProgram(program);
 
             var overviewWindow = new ProgramWindow(750, 50, 1280, 960);
@@ -48,11 +49,12 @@ namespace Dynamight.App
             var format = DepthImageFormat.Resolution80x60Fps30;
             DepthCamera depthCam = new DepthCamera(sensor, format);
             KinectCalibrator kc = new KinectCalibrator(cc);
+            SkeletonCamera scam = new SkeletonCamera(sensor);
             sensor.Start();
             float[] data = Utils.DeSerializeObject<float[]>(LightningFastApp.IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
             MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4, 4, data);
-            var adjustment = OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f);
-            program.SetProjection(pc, kc.GetModelView(D2C), null);
+            //var adjustment = OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.00f);
+            //program.SetProjection(pc, kc.GetModelView(D2C), adjustment);
 
             //program.SetProjection(pc); //, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(0f, 0.14f, 0.06f));
             //var rs = Range.OfDoubles(0.5, -0.5, 0.04);
@@ -65,8 +67,41 @@ namespace Dynamight.App
             var keyl = new KeyboardListener(window.Keyboard);
             SkeletonPoint[] skeletons = null;
             // Action H hide background:
-            bool hideBackground = true;
-            float zCutoff = 1.97f;
+            bool hideBackground = false;
+            float zCutoff = 3.4f;
+            float xadj = 0, yadj = 0.0f, zadj = 0;
+            float incr = 0.01f;
+            bool adjust = true;
+            program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj));
+            Action<float> xfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                xadj += f;
+                program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj));
+            };
+            Action<float> yfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                yadj += f;
+                program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj));
+            };
+            Action<float> zfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                zadj += f;
+                program.SetProjection(pc, kc.GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj));
+            };
+            keyl.AddAction(() => adjust = !adjust, Key.A);
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, null, (i) => yfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Left, Key.Right, null, (i) => xfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ShiftLeft }, (i) => zfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ControlLeft }, (i) => yfoo(i * incr * 3));
+            keyl.AddBinaryAction(1, -1, Key.Left, Key.Right, new Key[] { Key.ControlLeft }, (i) => xfoo(i * incr * 3));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ShiftLeft, Key.ControlLeft }, (i) => zfoo(i * incr * 3));
+
             keyl.AddAction(() =>
             {
                 hideBackground = !hideBackground;
@@ -79,7 +114,7 @@ namespace Dynamight.App
             }, OpenTK.Input.Key.H);
             while (true)
             {
-                var points = depthCam.Get(1000).Where(p => p.HasValue).Select(p => p.Value);
+                var points = depthCam.Get(1000).Where(p => p.HasValue && p.Value.Index > 0).Select(p => p.Value);
                 skeletons = points.Select(p => sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, p.Point)).ToArray();
                 program.SetPositions(skeletons.Where(sp => !hideBackground || sp.Z < zCutoff).Select(sp => new Vector3(sp.X, sp.Y, sp.Z)).ToArray());
                 overview.SetPointCloud(0, skeletons.Select(sp =>

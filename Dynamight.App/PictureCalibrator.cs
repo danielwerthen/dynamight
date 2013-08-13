@@ -13,7 +13,7 @@ namespace Dynamight.App
     public class PictureCalibrator
     {
         //Manual pickings
-        public static void Run(string[] args)
+        public static void RunManual(string[] args)
         {
             //var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             //var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);
@@ -54,7 +54,7 @@ namespace Dynamight.App
 
         }
 
-        public static void RunDual(string[] args)
+        public static void Run(string[] args)
         {
             //var main = OpenTK.DisplayDevice.AvailableDisplays.First(row => row.IsPrimary);
             //var window = new BitmapWindow(main.Bounds.Left + main.Width / 2 + 50, 50, 640, 480);

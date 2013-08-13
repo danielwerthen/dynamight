@@ -49,7 +49,7 @@ namespace Dynamight.App
                 ProjCorners = Utils.DeSerializeObject<PointF[]>(Path.Combine(dir, b)),  
             });
         }
-        public static void Run(string[] args)
+        public static void RunManual(string[] args)
         {
             string folderName = args.FirstOrDefault();
             if (folderName == null)
@@ -273,7 +273,7 @@ namespace Dynamight.App
             display.Close();
         }
 
-        public static void RunPrev(string[] args)
+        public static void Run(string[] args)
         {
             string folderName = args.FirstOrDefault();
             if (folderName == null)
@@ -282,15 +282,12 @@ namespace Dynamight.App
                 folderName = Console.ReadLine();
             }
             Func<Bitmap> cam;
-            var kinects = KinectSensor.KinectSensors.Where(s => s.Status == KinectStatus.Connected).ToArray();
+            var kinect = KinectSensor.KinectSensors.Where(s => s.Status == KinectStatus.Connected).First();
             var xcam = new ExCamera();
             if (true)
             {
-                var camera = kinects.Select(s =>
-                {
-                    s.Start();
-                    return new Camera(s, ColorImageFormat.RgbResolution1280x960Fps12);
-                }).First();
+                kinect.Start();
+                var camera = new Camera(kinect, ColorImageFormat.RgbResolution1280x960Fps12);
                 cam = () => camera.TakePicture(3);
             }
             else
@@ -305,8 +302,7 @@ namespace Dynamight.App
             var dir = Path.Combine(Directory.GetCurrentDirectory(), folderName);
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
-            var files = GetBitmaps(dir);
-            if (files.Count() > 0)
+            if (Directory.GetFiles(dir).Count() > 0)
             {
                 Console.WriteLine("There already are a couple files in this folder, would you like to delete them? (y/n)");
                 var cohice = Console.ReadLine();
@@ -325,19 +321,47 @@ namespace Dynamight.App
             keyl.AddAction(() => proceed = true, Key.Space);
             keyl.AddAction(() => quit = proceed = true, Key.Q);
 
+            if (false)
+            {
+                var dkeyl = new KeyboardListener(display.Keyboard);
+                dkeyl.AddBinaryAction(2, -2, Key.Up, Key.Down, null, (f) =>
+                {
+                    var ele = kinect.ElevationAngle;
+                    ele += f;
+                    if (ele < kinect.MaxElevationAngle && ele > kinect.MinElevationAngle)
+                        kinect.ElevationAngle = ele;
+                    var test = kinect.ElevationAngle;
+                    test.ToString();
+                });
+                dkeyl.AddAction(() => proceed = true, Key.Space);
+
+                Console.WriteLine("Adjust kinect elevation");
+                while (!proceed)
+                {
+                    display.DrawBitmap(cam());
+                    display.ProcessEvents();
+                }
+                proceed = false;
+            }
+            else
+            {
+                kinect.ElevationAngle = 19;
+            }
+
             Console.WriteLine("Outputting pictures into {0}", dir);
             while (true)
             {
                 string camFile = string.Format("{0}/{1}{2:000}.bmp", dir, CAM_FILE, passes);
                 string projFile = string.Format("{0}/{1}{2:000}.bmp", dir, PROJ_FILE, passes);
                 string projCornerFile = string.Format("{0}/{1}{2:000}.xml", dir, PROJ_CORNER_FILE, passes);
-                projector.DrawBackground(Color.Black);
+                projector.DrawBackground(Color.LightGray);
 
                 Console.WriteLine("Press space to do cam pass with corners, q to exit");
                 while (!proceed)
                 {
                     display.DrawBitmap(cam());
                     projector.window.ProcessEvents();
+                    display.ProcessEvents();
                 }
                 proceed = false;
                 if (quit)
@@ -349,6 +373,7 @@ namespace Dynamight.App
                     projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);
                     display.DrawBitmap(cam());
                     projector.window.ProcessEvents();
+                    display.ProcessEvents();
                 }
                 proceed = false;
                 var points = projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);

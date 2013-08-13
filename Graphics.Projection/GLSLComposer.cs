@@ -77,7 +77,7 @@ void main(void)
     gl_FrontColor = gl_Color;
     gl_TexCoord[0] = gl_MultiTexCoord0; 
     vec4 V = gl_ModelViewProjectionMatrix * gl_Vertex;
-    v = vec3(gl_ModelViewProjectionMatrix * gl_Vertex);       
+    v = vec3(gl_ModelViewMatrix * gl_Vertex);       
     N = vec3(0,0,1);
     gl_Position = distort(V);
 
@@ -142,7 +142,8 @@ void main(void)
     {
         col = col + getLightComp(gl_LightSource[i], v, N, gl_Color);
     }
-    gl_FragColor = clamp(col, 0.0, 1.0);
+    float d = 1.0 - distance(gl_TexCoord[0].st, vec2(0.5,0.5));
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0).xyz, clamp(pow(d, 3.0), 0.0, 1.0));
 }
 ";
 
@@ -166,6 +167,17 @@ void main(void)
    Idiff = clamp(Idiff, 0.0, 1.0); 
 
    gl_FragColor = Idiff * gl_Color;
+}
+";
+        public const string FSDiffuseLighting = @"
+
+varying  vec3 N;
+varying  vec3 v;
+uniform sampler2D COLORTABLE;
+
+void main(void)
+{
+   gl_FragColor = gl_LightSource[0].diffuse;
 }
 ";
 

@@ -27,7 +27,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration.Utils
             using (var frame = sensor.SkeletonStream.OpenNextFrame(wait))
             {
                 if (frame == null)
-                    return null;
+                    return new Skeleton[0];
                 var skeletons = new Skeleton[frame.SkeletonArrayLength];
                 frame.CopySkeletonDataTo(skeletons);
                 return skeletons;
