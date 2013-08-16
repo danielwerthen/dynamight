@@ -58,7 +58,7 @@ namespace Graphics
         public static ProgramWindow OpenOnSecondary()
         {
             var display = DisplayDevice.AvailableDisplays.First(row => !row.IsPrimary);
-            var window = new ProgramWindow(display.Bounds.Left, display.Bounds.Top, display.Width, display.Height, display);
+            var window = new ProgramWindow((int)(display.Bounds.Left/ 1.5), display.Bounds.Top, display.Width, display.Height, display);
             window.Fullscreen = true;
             window.Load();
             window.ResizeGraphics();

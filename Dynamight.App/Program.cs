@@ -23,6 +23,16 @@ namespace Dynamight.App
                 Run = Calibration.Calibrate
             },
             new ProgramCommand() {
+                Names = new string[] { "aim", "a" },
+                Parameters = new string[0],
+                Run = AimerApp.Run
+            },
+            new ProgramCommand() {
+                Names = new string[] { "pure", "p" },
+                Parameters = new string[] { "projcalibfile" },
+                Run = PureApp.Run
+            },
+            new ProgramCommand() {
                 Names = new string[] { "calibrateExtrin", "ce" }, 
                 Parameters = new string[] { "camcalibfile" },
                 Run = ExtrinsicCalibration.Run

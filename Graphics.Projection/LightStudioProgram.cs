@@ -181,7 +181,9 @@ void main(void)
         {
             SetPositions(verts.SelectMany(v => v));
             ModelViews = modelviews;
-            Lengths = verts.Select(v => v.Length * 6).ToArray();
+
+            int c = 0;
+            Lengths = verts.Select(v => c += v.Length * 6).ToArray();
         }
 
         public override void Render()
@@ -200,7 +202,7 @@ void main(void)
             {
                 GL.DrawArrays(BeginMode.Triangles, 0, vertices.Length);
             }
-            else
+            else if (vertices.Length > 0)
             {
                 int last = 0;
                 for (int i = 0; i < ModelViews.Length; i++)

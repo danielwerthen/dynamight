@@ -52,7 +52,7 @@ namespace Dynamight.App
                     sensor = k,
                     depth = new DepthCamera(k, format),
                     skeleton = new SkeletonCamera(k),
-                    calibrator = new KinectCalibrator(Utils.DeSerializeObject<CalibrationResult>(k.UniqueKinectId + ".xml"))
+                    calibrator = new KinectCalibrator(Utils.DeSerializeObject<CalibrationResult>(k.UniqueKinectId.Substring(k.UniqueKinectId.Length - 16) + ".xml"))
                 };
             });
             float[] data = Utils.DeSerializeObject<float[]>(LightningFastApp.IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
@@ -106,6 +106,10 @@ namespace Dynamight.App
                 else
                     zCutoff = 0;
             }, OpenTK.Input.Key.H);
+
+
+            program.SetProjection(pc, inputs.Select(i => i.calibrator).First().GetModelView(D2C), OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj));
+            
             while (true)
             {
                 var points = inputs.Select(inp => new
@@ -115,9 +119,9 @@ namespace Dynamight.App
                         .Select(p => inp.sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, p.Value.Point))
                         .ToArray()
                 });
+
+                program.SetPositions(points.Take(1).SelectMany(v => v.Skeletons.Select(sp => new Vector3(sp.X, sp.Y, sp.Z))));
                 
-                program.SetPositions(points.Select(v => v.Skeletons.Where(sp => !hideBackground || sp.Z < zCutoff).Select(sp => new Vector3(sp.X, sp.Y, sp.Z)).ToArray()).ToArray(), points.Select(v =>
-                    v.Calibrator.GetModelView(D2C) * OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj)).ToArray());
 
                 overview.SetPointCloud(0, points.SelectMany(p =>
                     {

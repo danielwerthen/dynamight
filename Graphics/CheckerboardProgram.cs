@@ -76,7 +76,7 @@ void main(void)
                     double iy = Math.Floor(y * rows) % 2;
                     double i = iy > 0 ? ix : 1 - ix;
                     i = 1 - i;
-                    return Color.FromArgb((int)(i * 255), (int)(i * 255), (int)(i * 255));
+                    return Color.FromArgb((int)(i * 155), (int)(i * 155), (int)(i * 155));
                 }, true).Finish();
             }
 		}

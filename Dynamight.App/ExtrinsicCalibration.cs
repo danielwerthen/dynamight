@@ -14,7 +14,7 @@ namespace Dynamight.App
 {
     public class ExtrinsicCalibration
     {
-        public static void Run(string[] args)
+        public static void RunOld(string[] args)
         {
             var intrinsicfile = args.FirstOrDefault() ?? Calibration.KinectDefaultFileName;
             var camIntrinsic = Utils.DeSerializeObject<CalibrationResult>(intrinsicfile);
@@ -72,7 +72,7 @@ namespace Dynamight.App
             proj.Close();
         }
 
-        public static void RunOld(string[] args)
+        public static void Run(string[] args)
         {
             var intrinsicfile = args.FirstOrDefault() ?? Calibration.KinectDefaultFileName;
             var intrinsic = Utils.DeSerializeObject<CalibrationResult>(intrinsicfile);
@@ -90,7 +90,7 @@ namespace Dynamight.App
             {
                 Console.WriteLine("Place checkerboard at the origo position, make sure it is visible to all connected Kinects, and press enter.");
                 Console.ReadLine();
-                corners = cameras.Select(camera => StereoCalibration.GetCameraCorners(projector, camera, new Size(7, 4), false)).ToArray();
+                corners = cameras.Select(camera => StereoCalibration.GetCameraCorners(projector, camera, new Size(10, 7), false)).ToArray();
                 if (corners.All(c => c != null))
                 {
                     break;
@@ -98,10 +98,10 @@ namespace Dynamight.App
                 else
                     Console.WriteLine("Could not find any corners, make sure the checkerboard is visible to all Kinects.");
             }
-            var results = cameras.Zip(corners, (camera, cs) => StereoCalibration.CalibrateCamera(cs, new Size(7, 4), 0.05f, intrinsic)).ToArray();
+            var results = cameras.Zip(corners, (camera, cs) => StereoCalibration.CalibrateCamera(cs, new Size(10,7), 0.1f, intrinsic)).ToArray();
             kinects.Zip(results, (kinect, result) =>
             {
-                Utils.SerializeObject(result, kinect.UniqueKinectId + ".xml");
+                Utils.SerializeObject(result, kinect.UniqueKinectId.Substring(kinect.UniqueKinectId.Length - 16) + ".xml");
                 return true;
             }).ToArray();
         }

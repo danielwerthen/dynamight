@@ -225,10 +225,11 @@ namespace Graphics
 				if (value)
 				{
 					this.WindowBorder = WindowBorder.Hidden;
-					SetWindowPos(WindowHandle, IntPtr.Zero, display.Bounds.Left,
+                    int left = (int)(display.Bounds.Left / 1.5);
+					SetWindowPos(WindowHandle, IntPtr.Zero, left,
 					 display.Bounds.Top, display.Bounds.Width, display.Bounds.Height - 1, //Strange but necessary
 					 SetWindowPosFlags.SWP_NOMOVE);
-					SetWindowPos(WindowHandle, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, display.Bounds.Left,
+					SetWindowPos(WindowHandle, (IntPtr)SpecialWindowHandles.HWND_TOPMOST, left,
 					 display.Bounds.Top, display.Bounds.Width, display.Bounds.Height,
 					 SetWindowPosFlags.SWP_SHOWWINDOW);
 					this.WindowState = WindowState.Fullscreen;

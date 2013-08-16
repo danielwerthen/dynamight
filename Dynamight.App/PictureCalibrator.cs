@@ -72,10 +72,11 @@ namespace Dynamight.App
             Console.Write("Enter the folders you'd like to use: ");
             var folders = Console.ReadLine().Split(' ').ToArray();
             var maps = folders.SelectMany(f => PictureGrabber.GetBitmaps(f)).ToArray();
-            Size pattern = new Size(7, 4);
-            float chsize = 0.05f;
+            Size pattern = new Size(10, 7);
+            Size ppattern = new Size(10, 8);
+            float chsize = 0.1f;
             var kcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Camera, pattern)).ToArray();
-            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, pattern)).ToArray();
+            var pcorners = maps.Select(ms => StereoCalibration.GetCameraCorners(ms.Projector, ppattern)).ToArray();
             kcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? a : null).Where(a => a != null).ToArray();
             pcorners = kcorners.Zip(pcorners, (a, b) => a != null && b != null ? b : null).Where(a => a != null).ToArray();
             if (kcorners.Count() != pcorners.Count())

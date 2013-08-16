@@ -73,6 +73,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AimerApp.cs" />
     <Compile Include="Calibration.cs" />
     <Compile Include="CalibrationResultPresenter.cs" />
     <Compile Include="HandLightning.cs" />
@@ -86,6 +87,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ExtrinsicCalibration.cs" />
+    <Compile Include="PureApp.cs" />
     <Compile Include="RemoteApp.cs" />
     <Compile Include="SkeletonApp.cs" />
     <Compile Include="TransformApp.cs" />

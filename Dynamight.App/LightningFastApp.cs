@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dynamight.Processing;
+using System.Threading;
 
 namespace Dynamight.App
 {
@@ -67,7 +68,7 @@ namespace Dynamight.App
                     depths = players.Where(p => p.Skeleton != null).SelectMany(s => s.DepthPoints).ToArray();
                 if (depths.Count() > 0)
                 {
-                    if (false)
+                    if (true)
                     {
                         using (var block = rec.GetBlock("Find Rigid transform"))
                         {

@@ -275,6 +275,7 @@ namespace Dynamight.App
 
         public static void Run(string[] args)
         {
+
             string folderName = args.FirstOrDefault();
             if (folderName == null)
             {
@@ -282,6 +283,7 @@ namespace Dynamight.App
                 folderName = Console.ReadLine();
             }
             Func<Bitmap> cam;
+            
             var kinect = KinectSensor.KinectSensors.Where(s => s.Status == KinectStatus.Connected).First();
             var xcam = new ExCamera();
             if (true)
@@ -349,6 +351,7 @@ namespace Dynamight.App
             }
 
             Console.WriteLine("Outputting pictures into {0}", dir);
+            Size projSize = new Size(11, 9);
             while (true)
             {
                 string camFile = string.Format("{0}/{1}{2:000}.bmp", dir, CAM_FILE, passes);
@@ -370,13 +373,13 @@ namespace Dynamight.App
                 Console.WriteLine("Adjust projection then press space");
                 while (!proceed)
                 {
-                    projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);
+                    projector.DrawCheckerboard(projSize, 0, 0, 0, scale, offsetx, offsety);
                     display.DrawBitmap(cam());
                     projector.window.ProcessEvents();
                     display.ProcessEvents();
                 }
                 proceed = false;
-                var points = projector.DrawCheckerboard(new System.Drawing.Size(8, 5), 0, 0, 0, scale, offsetx, offsety);
+                var points = projector.DrawCheckerboard(projSize, 0, 0, 0, scale, offsetx, offsety);
                 cam().Save(projFile);
                 Utils.SerializeObject(points, projCornerFile);
                 passes++;
