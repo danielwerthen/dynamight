@@ -148,7 +148,7 @@ void main(void)
             }).ToArray();
         }
 
-        public void SetPositions(Vector3[] vertices)
+        public void SetPositions(IEnumerable<Vector3> vertices)
         {
 
             float[][] qs = new float[][] { 
@@ -170,6 +170,18 @@ void main(void)
                 qs.Select(q => new Vector3(v.X + q[0] * pointSize, v.Y + q[1] * pointSize, v.Z))
                 .Zip(tc, (p, t) => new Vertex() { Position = p, TexCoord = t })
                 ).ToArray();
+            ModelViews = new Matrix4[0];
+            Lengths = new int[0];
+        }
+
+        Matrix4[] ModelViews = new Matrix4[0];
+        int[] Lengths = new int[0];
+
+        public void SetPositions(Vector3[][] verts, Matrix4[] modelviews)
+        {
+            SetPositions(verts.SelectMany(v => v));
+            ModelViews = modelviews;
+            Lengths = verts.Select(v => v.Length * 6).ToArray();
         }
 
         public override void Render()
@@ -184,7 +196,21 @@ void main(void)
             GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(vertices.Length * Vertex.SizeInBytes), IntPtr.Zero, BufferUsageHint.StreamDraw);
             GL.BufferData(BufferTarget.ArrayBuffer, (IntPtr)(vertices.Length * Vertex.SizeInBytes), vertices, BufferUsageHint.StreamDraw);
 
-            GL.DrawArrays(BeginMode.Triangles, 0, vertices.Length);
+            if (ModelViews.Length == 0)
+            {
+                GL.DrawArrays(BeginMode.Triangles, 0, vertices.Length);
+            }
+            else
+            {
+                int last = 0;
+                for (int i = 0; i < ModelViews.Length; i++)
+                {
+                    GL.MatrixMode(MatrixMode.Modelview);
+                    GL.LoadMatrix(ref ModelViews[i]);
+                    GL.DrawArrays(BeginMode.Triangles, last, Lengths[i]);
+                    last = Lengths[i] - 1;
+                }
+            }
         }
     }
 }

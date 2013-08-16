@@ -617,7 +617,7 @@ namespace Dynamight.ImageProcessing.CameraCalibration
         {
 
             //Take pic of checkerboard with no proj light
-            projector.DrawBackground(Color.Black);
+            projector.DrawBackground(Color.Gray);
             //Detect corners in camera space
             PointF[] cameraCorners;
             Bitmap withCorners;

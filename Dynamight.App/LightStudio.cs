@@ -23,6 +23,121 @@ namespace Dynamight.App
         public static void Run(string[] args)
         {
 
+            var projfile = args.Skip(1).FirstOrDefault() ?? Calibration.ProjectorDefaultFileName;
+            if (!File.Exists(projfile))
+            {
+                Console.WriteLine("Either calib file could not be found.");
+                return;
+            }
+
+            var pc = Utils.DeSerializeObject<CalibrationResult>(projfile);
+
+            var window = ProgramWindow.OpenOnSecondary();
+
+            var program = new LightStudioProgram(0.08f);
+            window.SetProgram(program);
+
+            var overviewWindow = new ProgramWindow(750, 50, 1280, 960);
+            overviewWindow.Load();
+            overviewWindow.ResizeGraphics();
+            OverviewProgram overview = new OverviewProgram(program);
+            overviewWindow.SetProgram(overview);
+            
+            var format = DepthImageFormat.Resolution80x60Fps30;
+            var inputs = KinectSensor.KinectSensors.Where(k => k.Status == KinectStatus.Connected).Select(k =>
+            {
+                k.Start();
+                return new
+                {
+                    sensor = k,
+                    depth = new DepthCamera(k, format),
+                    skeleton = new SkeletonCamera(k),
+                    calibrator = new KinectCalibrator(Utils.DeSerializeObject<CalibrationResult>(k.UniqueKinectId + ".xml"))
+                };
+            });
+            float[] data = Utils.DeSerializeObject<float[]>(LightningFastApp.IR2RGBFILE) ?? MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.Identity(4).ToColumnWiseArray();
+            MathNet.Numerics.LinearAlgebra.Generic.Matrix<float> D2C = MathNet.Numerics.LinearAlgebra.Single.DenseMatrix.OfColumnMajor(4, 4, data);
+            
+            var keyl = new KeyboardListener(window.Keyboard);
+            SkeletonPoint[] skeletons = null;
+            // Action H hide background:
+            bool hideBackground = false;
+            float zCutoff = 3.4f;
+            float xadj = 0, yadj = 0.0f, zadj = 0;
+            float incr = 0.01f;
+            bool adjust = true;
+            program.SetProjection(pc);
+            Action<float> xfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                xadj += f;
+                program.SetProjection(pc);
+            };
+            Action<float> yfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                yadj += f;
+                program.SetProjection(pc);
+            };
+            Action<float> zfoo = (f) =>
+            {
+                if (!adjust)
+                    return;
+                zadj += f;
+                program.SetProjection(pc);
+            };
+            keyl.AddAction(() => adjust = !adjust, Key.A);
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, null, (i) => yfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Left, Key.Right, null, (i) => xfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ShiftLeft }, (i) => zfoo(i * incr));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ControlLeft }, (i) => yfoo(i * incr * 3));
+            keyl.AddBinaryAction(1, -1, Key.Left, Key.Right, new Key[] { Key.ControlLeft }, (i) => xfoo(i * incr * 3));
+            keyl.AddBinaryAction(1, -1, Key.Up, Key.Down, new Key[] { Key.ShiftLeft, Key.ControlLeft }, (i) => zfoo(i * incr * 3));
+
+            keyl.AddAction(() =>
+            {
+                hideBackground = !hideBackground;
+                if (skeletons != null && skeletons.Length > 0)
+                {
+                    zCutoff = skeletons.Min(sp => sp.Z);
+                }
+                else
+                    zCutoff = 0;
+            }, OpenTK.Input.Key.H);
+            while (true)
+            {
+                var points = inputs.Select(inp => new
+                {
+                    Calibrator = inp.calibrator,
+                    Skeletons = inp.depth.Get(100).Where(p => p.HasValue && p.Value.Index > 0)
+                        .Select(p => inp.sensor.CoordinateMapper.MapDepthPointToSkeletonPoint(format, p.Value.Point))
+                        .ToArray()
+                });
+                
+                program.SetPositions(points.Select(v => v.Skeletons.Where(sp => !hideBackground || sp.Z < zCutoff).Select(sp => new Vector3(sp.X, sp.Y, sp.Z)).ToArray()).ToArray(), points.Select(v =>
+                    v.Calibrator.GetModelView(D2C) * OpenTK.Matrix4.CreateTranslation(xadj, yadj, zadj)).ToArray());
+
+                overview.SetPointCloud(0, points.SelectMany(p =>
+                    {
+                        return p.Skeletons.Select(sp =>
+                        {
+                            var gp = p.Calibrator.ToGlobal(sp);
+                            return new DynamicVertex(new Vector3(gp[0], gp[1], gp[2]));
+                        });
+                    }).ToArray());
+
+                window.RenderFrame();
+                overviewWindow.RenderFrame();
+                window.ProcessEvents();
+                overviewWindow.ProcessEvents();
+            }
+        }
+
+        public static void RunOld(string[] args)
+        {
+
             var camfile = args.FirstOrDefault() ?? Calibration.KinectDefaultFileName;
             var projfile = args.Skip(1).FirstOrDefault() ?? Calibration.ProjectorDefaultFileName;
             if (!File.Exists(camfile) || !File.Exists(projfile))
